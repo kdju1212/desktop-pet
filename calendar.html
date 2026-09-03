@@ -1,0 +1,611 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>할일 캘린더</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        font: 13px/1.4 system-ui, sans-serif;
+        color: #202124;
+        background: #f5f6f8;
+      }
+
+      body {
+        display: flex;
+        flex-direction: column;
+      }
+
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 12px 16px;
+        background: #fff;
+        border-bottom: 1px solid #e4e6eb;
+      }
+
+      .month-nav {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .month-title {
+        font-size: 16px;
+        font-weight: 700;
+        min-width: 110px;
+        text-align: center;
+      }
+
+      button {
+        border: 1px solid #d0d5dd;
+        border-radius: 7px;
+        background: #fff;
+        color: #202124;
+        font: inherit;
+        cursor: pointer;
+        padding: 6px 10px;
+      }
+
+      button.primary {
+        background: #202124;
+        border-color: #202124;
+        color: #fff;
+      }
+
+      button.danger {
+        color: #b42318;
+      }
+
+      button:hover {
+        filter: brightness(0.97);
+      }
+
+      main {
+        flex: 1;
+        display: flex;
+        min-height: 0;
+      }
+
+      .calendar {
+        flex: 1.4;
+        display: flex;
+        flex-direction: column;
+        padding: 12px;
+        min-width: 0;
+      }
+
+      .weekday-row,
+      .day-grid {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 6px;
+      }
+
+      .weekday-row {
+        padding: 0 2px 6px;
+        color: #5f6368;
+        font-weight: 600;
+        text-align: center;
+        font-size: 12px;
+      }
+
+      .day-grid {
+        flex: 1;
+        grid-auto-rows: 1fr;
+      }
+
+      .day-cell {
+        background: #fff;
+        border: 1px solid #e4e6eb;
+        border-radius: 8px;
+        padding: 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+        cursor: pointer;
+        overflow: hidden;
+        min-height: 0;
+      }
+
+      .day-cell.outside {
+        background: #fafafa;
+        color: #b7bcc4;
+      }
+
+      .day-cell.today {
+        border-color: #202124;
+      }
+
+      .day-cell.selected {
+        background: #eef0ff;
+        border-color: #3b4bff;
+      }
+
+      .day-number {
+        font-size: 12px;
+        font-weight: 700;
+      }
+
+      .day-events {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        overflow: hidden;
+      }
+
+      .day-event-chip {
+        font-size: 10.5px;
+        padding: 1px 5px;
+        border-radius: 5px;
+        background: #eef0ff;
+        color: #2a35c0;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+
+      .day-event-more {
+        font-size: 10px;
+        color: #5f6368;
+      }
+
+      .day-event-chip.done {
+        text-decoration: line-through;
+        opacity: 0.55;
+      }
+
+      .card-title-row {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+      }
+
+      .card-title-row input[type="text"] {
+        flex: 1;
+      }
+
+      .schedule-card.done {
+        opacity: 0.6;
+      }
+
+      .panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        padding: 16px;
+        border-left: 1px solid #e4e6eb;
+        background: #fff;
+        overflow-y: auto;
+      }
+
+      .panel-title {
+        font-size: 15px;
+        font-weight: 700;
+      }
+
+      .schedule-card {
+        border: 1px solid #e4e6eb;
+        border-radius: 8px;
+        padding: 10px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+      }
+
+      .schedule-card input {
+        width: 100%;
+        padding: 5px 7px;
+        border: 1px solid #d0d5dd;
+        border-radius: 6px;
+        font: inherit;
+      }
+
+      .schedule-card input[type="checkbox"] {
+        width: auto;
+        flex: 0 0 auto;
+      }
+
+      .field-row {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 6px;
+      }
+
+      .card-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 6px;
+      }
+
+      .empty-hint {
+        color: #5f6368;
+        font-size: 12.5px;
+      }
+
+      .add-button {
+        align-self: flex-start;
+      }
+
+      .ai-add-row {
+        display: flex;
+        gap: 6px;
+      }
+
+      .ai-add-row input {
+        flex: 1;
+        min-width: 0;
+        padding: 6px 8px;
+        border: 1px solid #d0d5dd;
+        border-radius: 6px;
+        font: inherit;
+      }
+
+      .ai-status {
+        min-height: 16px;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <div class="month-nav">
+        <button id="prevMonth" type="button">◀</button>
+        <div id="monthTitle" class="month-title">-</div>
+        <button id="nextMonth" type="button">▶</button>
+      </div>
+      <button id="todayButton" type="button">오늘</button>
+    </header>
+
+    <main>
+      <section class="calendar">
+        <div class="weekday-row">
+          <div>일</div>
+          <div>월</div>
+          <div>화</div>
+          <div>수</div>
+          <div>목</div>
+          <div>금</div>
+          <div>토</div>
+        </div>
+        <div id="dayGrid" class="day-grid"></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-title" id="panelTitle">날짜를 선택하세요</div>
+        <div id="aiAddRow" class="ai-add-row">
+          <input id="aiScheduleInput" type="text" placeholder="예: 오후 3시 회의 / 회의 4시로 변경 / 회의 취소" />
+          <button id="aiAddButton" class="primary" type="button">AI로 추가</button>
+        </div>
+        <div id="aiStatus" class="ai-status"></div>
+        <button id="addCard" class="add-button" type="button">+ 직접 추가</button>
+        <div id="cardList"></div>
+      </section>
+    </main>
+
+    <script>
+      const monthTitle = document.getElementById("monthTitle");
+      const dayGrid = document.getElementById("dayGrid");
+      const prevMonth = document.getElementById("prevMonth");
+      const nextMonth = document.getElementById("nextMonth");
+      const todayButton = document.getElementById("todayButton");
+      const panelTitle = document.getElementById("panelTitle");
+      const cardList = document.getElementById("cardList");
+      const addCard = document.getElementById("addCard");
+      const aiAddRow = document.getElementById("aiAddRow");
+      const aiScheduleInput = document.getElementById("aiScheduleInput");
+      const aiAddButton = document.getElementById("aiAddButton");
+      const aiStatus = document.getElementById("aiStatus");
+
+      let schedule = [];
+      let viewYear;
+      let viewMonth;
+      let selectedDate;
+      let aiStatusTimer = null;
+
+      function setAiStatus(message, isError) {
+        aiStatus.textContent = message;
+        aiStatus.style.color = isError ? "#b42318" : "#1a7f37";
+        window.clearTimeout(aiStatusTimer);
+        aiStatusTimer = window.setTimeout(() => {
+          aiStatus.textContent = "";
+        }, 6000);
+      }
+
+      function toDateKey(year, month, day) {
+        return [year, String(month + 1).padStart(2, "0"), String(day).padStart(2, "0")].join("-");
+      }
+
+      function todayKey() {
+        const now = new Date();
+        return toDateKey(now.getFullYear(), now.getMonth(), now.getDate());
+      }
+
+      function itemsForDate(dateKey) {
+        return schedule
+          .filter((item) => item.date === dateKey)
+          .sort((a, b) => `${a.time || "99:99"}`.localeCompare(`${b.time || "99:99"}`));
+      }
+
+      function renderCalendar() {
+        monthTitle.textContent = `${viewYear}년 ${viewMonth + 1}월`;
+        dayGrid.innerHTML = "";
+
+        const firstDay = new Date(viewYear, viewMonth, 1);
+        const startOffset = firstDay.getDay();
+        const daysInMonth = new Date(viewYear, viewMonth + 1, 0).getDate();
+        const daysInPrevMonth = new Date(viewYear, viewMonth, 0).getDate();
+        const totalCells = Math.ceil((startOffset + daysInMonth) / 7) * 7;
+        const tKey = todayKey();
+
+        for (let cellIndex = 0; cellIndex < totalCells; cellIndex += 1) {
+          const dayNumber = cellIndex - startOffset + 1;
+          let cellYear = viewYear;
+          let cellMonth = viewMonth;
+          let cellDay = dayNumber;
+          let outside = false;
+
+          if (dayNumber < 1) {
+            cellMonth = viewMonth - 1;
+            cellYear = cellMonth < 0 ? viewYear - 1 : viewYear;
+            cellMonth = (cellMonth + 12) % 12;
+            cellDay = daysInPrevMonth + dayNumber;
+            outside = true;
+          } else if (dayNumber > daysInMonth) {
+            cellDay = dayNumber - daysInMonth;
+            cellMonth = viewMonth + 1;
+            cellYear = cellMonth > 11 ? viewYear + 1 : viewYear;
+            cellMonth = cellMonth % 12;
+            outside = true;
+          }
+
+          const dateKey = toDateKey(cellYear, cellMonth, cellDay);
+          const cell = document.createElement("div");
+          cell.className = "day-cell";
+          if (outside) cell.classList.add("outside");
+          if (dateKey === tKey) cell.classList.add("today");
+          if (dateKey === selectedDate) cell.classList.add("selected");
+
+          const number = document.createElement("div");
+          number.className = "day-number";
+          number.textContent = cellDay;
+          cell.appendChild(number);
+
+          const events = document.createElement("div");
+          events.className = "day-events";
+          const dayItems = itemsForDate(dateKey);
+          dayItems.slice(0, 3).forEach((item) => {
+            const chip = document.createElement("div");
+            chip.className = "day-event-chip";
+            if (item.done) chip.classList.add("done");
+            chip.textContent = `${item.time ? `${item.time} ` : ""}${item.title}`;
+            events.appendChild(chip);
+          });
+          if (dayItems.length > 3) {
+            const more = document.createElement("div");
+            more.className = "day-event-more";
+            more.textContent = `+${dayItems.length - 3}개 더`;
+            events.appendChild(more);
+          }
+          cell.appendChild(events);
+
+          cell.addEventListener("click", () => {
+            selectedDate = dateKey;
+            renderCalendar();
+            renderPanel();
+          });
+
+          dayGrid.appendChild(cell);
+        }
+      }
+
+      function buildCard(item) {
+        const card = document.createElement("div");
+        card.className = "schedule-card";
+        if (item.done) card.classList.add("done");
+
+        const fieldRow = document.createElement("div");
+        fieldRow.className = "field-row";
+
+        const timeInput = document.createElement("input");
+        timeInput.type = "time";
+        timeInput.value = item.time || "";
+
+        const dateInput = document.createElement("input");
+        dateInput.type = "date";
+        dateInput.value = item.date || selectedDate;
+
+        fieldRow.appendChild(dateInput);
+        fieldRow.appendChild(timeInput);
+
+        const titleRow = document.createElement("div");
+        titleRow.className = "card-title-row";
+
+        const doneCheckbox = document.createElement("input");
+        doneCheckbox.type = "checkbox";
+        doneCheckbox.checked = Boolean(item.done);
+        doneCheckbox.title = "완료";
+
+        const titleInput = document.createElement("input");
+        titleInput.type = "text";
+        titleInput.placeholder = "제목";
+        titleInput.value = item.title || "";
+        titleInput.style.textDecoration = item.done ? "line-through" : "none";
+
+        doneCheckbox.addEventListener("change", async () => {
+          titleInput.style.textDecoration = doneCheckbox.checked ? "line-through" : "none";
+          card.classList.toggle("done", doneCheckbox.checked);
+          if (item.id) {
+            await window.desktopPet.updateSchedule({ id: item.id, done: doneCheckbox.checked });
+          }
+        });
+
+        titleRow.appendChild(doneCheckbox);
+        titleRow.appendChild(titleInput);
+
+        const memoInput = document.createElement("input");
+        memoInput.type = "text";
+        memoInput.placeholder = "메모 (선택 사항)";
+        memoInput.value = item.memo || "";
+
+        const actions = document.createElement("div");
+        actions.className = "card-actions";
+
+        const saveButton = document.createElement("button");
+        saveButton.className = "primary";
+        saveButton.type = "button";
+        saveButton.textContent = "저장";
+        saveButton.addEventListener("click", async () => {
+          const payload = {
+            id: item.id,
+            date: dateInput.value || selectedDate,
+            time: timeInput.value || "",
+            title: titleInput.value.trim() || "새 할일",
+            memo: memoInput.value,
+            done: doneCheckbox.checked
+          };
+
+          if (item.id) {
+            await window.desktopPet.updateSchedule(payload);
+          } else {
+            await window.desktopPet.addSchedule(payload);
+          }
+        });
+
+        const deleteButton = document.createElement("button");
+        deleteButton.className = "danger";
+        deleteButton.type = "button";
+        deleteButton.textContent = "삭제";
+        deleteButton.style.display = item.id ? "" : "none";
+        deleteButton.addEventListener("click", async () => {
+          await window.desktopPet.deleteSchedule(item.id);
+        });
+
+        actions.appendChild(deleteButton);
+        actions.appendChild(saveButton);
+
+        card.appendChild(fieldRow);
+        card.appendChild(titleRow);
+        card.appendChild(memoInput);
+        card.appendChild(actions);
+
+        return card;
+      }
+
+      function renderPanel() {
+        cardList.innerHTML = "";
+
+        if (!selectedDate) {
+          panelTitle.textContent = "날짜를 선택하세요";
+          addCard.style.display = "none";
+          aiAddRow.style.display = "none";
+          return;
+        }
+
+        addCard.style.display = "";
+        aiAddRow.style.display = "";
+        panelTitle.textContent = selectedDate;
+
+        const items = itemsForDate(selectedDate);
+        if (!items.length) {
+          const hint = document.createElement("div");
+          hint.className = "empty-hint";
+          hint.textContent = "이 날짜에 등록된 할일이 없습니다.";
+          cardList.appendChild(hint);
+          return;
+        }
+
+        for (const item of items) {
+          cardList.appendChild(buildCard(item));
+        }
+      }
+
+      function goToMonth(offset) {
+        const next = new Date(viewYear, viewMonth + offset, 1);
+        viewYear = next.getFullYear();
+        viewMonth = next.getMonth();
+        renderCalendar();
+      }
+
+      prevMonth.addEventListener("click", () => goToMonth(-1));
+      nextMonth.addEventListener("click", () => goToMonth(1));
+      todayButton.addEventListener("click", () => {
+        const now = new Date();
+        viewYear = now.getFullYear();
+        viewMonth = now.getMonth();
+        selectedDate = todayKey();
+        renderCalendar();
+        renderPanel();
+      });
+
+      addCard.addEventListener("click", () => {
+        cardList.appendChild(buildCard({ id: "", date: selectedDate, time: "", title: "", memo: "" }));
+      });
+
+      async function runAiSchedule() {
+        const text = aiScheduleInput.value.trim();
+        if (!text) {
+          setAiStatus("처리할 내용을 입력해 주세요.", true);
+          return;
+        }
+        if (!selectedDate) {
+          setAiStatus("먼저 날짜를 선택하세요.", true);
+          return;
+        }
+
+        aiAddButton.disabled = true;
+        aiAddButton.textContent = "처리 중...";
+
+        try {
+          const contextText = `${selectedDate} 날짜 기준으로 처리해줘. 문장에 날짜가 따로 없으면 이 날짜를 써줘. ${text}`;
+          const result = await window.desktopPet.addScheduleWithAi(contextText);
+          aiScheduleInput.value = "";
+
+          const actionLabel = { add: "등록", update: "수정", delete: "삭제" }[result.action] || "처리";
+          let message = `할일을 ${actionLabel}했어요: ${result.item.title}`;
+          if (result.conflict) {
+            message += ` (같은 시간에 "${result.conflict.title}" 있음)`;
+          }
+          setAiStatus(message, false);
+        } catch (error) {
+          setAiStatus(`AI 처리 실패: ${error.message || "설정을 확인해 주세요."}`, true);
+        } finally {
+          aiAddButton.disabled = false;
+          aiAddButton.textContent = "AI로 추가";
+        }
+      }
+
+      aiAddButton.addEventListener("click", runAiSchedule);
+      aiScheduleInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          runAiSchedule();
+        }
+      });
+
+      window.desktopPet.onScheduleUpdated((nextSchedule) => {
+        schedule = Array.isArray(nextSchedule) ? nextSchedule : [];
+        renderCalendar();
+        renderPanel();
+      });
+
+      window.desktopPet.readSchedule().then((initialSchedule) => {
+        schedule = Array.isArray(initialSchedule) ? initialSchedule : [];
+        const now = new Date();
+        viewYear = now.getFullYear();
+        viewMonth = now.getMonth();
+        selectedDate = todayKey();
+        renderCalendar();
+        renderPanel();
+      });
+    </script>
+  </body>
+</html>

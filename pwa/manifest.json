@@ -1,0 +1,14 @@
+{
+  "name": "할일 펫",
+  "short_name": "할일펫",
+  "description": "데스크톱 펫과 동기화되는 할일 관리 앱",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f5f6f8",
+  "theme_color": "#202124",
+  "icons": [
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

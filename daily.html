@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>데일리 할일</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        font: 13px/1.4 system-ui, sans-serif;
+        color: #202124;
+        background: #fff;
+      }
+
+      body {
+        display: flex;
+        flex-direction: column;
+        padding: 16px;
+        gap: 10px;
+      }
+
+      .title {
+        font-size: 15px;
+        font-weight: 700;
+      }
+
+      .help {
+        color: #5f6368;
+        font-size: 12px;
+      }
+
+      .list {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        overflow: auto;
+        border-top: 1px solid #eaecf0;
+        border-bottom: 1px solid #eaecf0;
+        padding: 8px 0;
+      }
+
+      .daily-item {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 8px;
+        align-items: center;
+      }
+
+      .daily-item span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .empty-hint {
+        color: #5f6368;
+        font-size: 12.5px;
+      }
+
+      .add-row {
+        display: grid;
+        grid-template-columns: 1fr 90px auto;
+        gap: 6px;
+      }
+
+      input {
+        padding: 6px 8px;
+        border: 1px solid #d0d5dd;
+        border-radius: 7px;
+        font: inherit;
+        width: 100%;
+      }
+
+      button {
+        border: 1px solid #d0d5dd;
+        border-radius: 7px;
+        background: #fff;
+        color: #202124;
+        font: inherit;
+        cursor: pointer;
+        padding: 6px 10px;
+      }
+
+      button.primary {
+        background: #202124;
+        border-color: #202124;
+        color: #fff;
+      }
+
+      button.danger {
+        color: #b42318;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="title">데일리 할일</div>
+    <div class="help">여기 등록하면 매일 자정 이후 자동으로 오늘 할일에 새로 추가됩니다.</div>
+    <div id="list" class="list"></div>
+    <div class="add-row">
+      <input id="titleInput" type="text" placeholder="예: 물 마시기, 스트레칭" />
+      <input id="timeInput" type="time" />
+      <button id="addButton" class="primary" type="button">추가</button>
+    </div>
+
+    <script>
+      const list = document.getElementById("list");
+      const titleInput = document.getElementById("titleInput");
+      const timeInput = document.getElementById("timeInput");
+      const addButton = document.getElementById("addButton");
+
+      function renderList(dailyTodos) {
+        list.innerHTML = "";
+
+        if (!dailyTodos.length) {
+          const hint = document.createElement("div");
+          hint.className = "empty-hint";
+          hint.textContent = "등록된 데일리 할일이 없습니다.";
+          list.appendChild(hint);
+          return;
+        }
+
+        for (const daily of dailyTodos) {
+          const row = document.createElement("div");
+          row.className = "daily-item";
+
+          const label = document.createElement("span");
+          label.textContent = `${daily.time ? `${daily.time} ` : ""}${daily.title}`;
+
+          const remove = document.createElement("button");
+          remove.className = "danger";
+          remove.type = "button";
+          remove.textContent = "삭제";
+          remove.addEventListener("click", async () => {
+            await window.desktopPet.deleteDailyTodo(daily.id);
+          });
+
+          row.appendChild(label);
+          row.appendChild(remove);
+          list.appendChild(row);
+        }
+      }
+
+      async function submitAdd() {
+        const title = titleInput.value.trim();
+        if (!title) {
+          return;
+        }
+
+        await window.desktopPet.addDailyTodo({ title, time: timeInput.value || "" });
+        titleInput.value = "";
+        timeInput.value = "";
+      }
+
+      addButton.addEventListener("click", submitAdd);
+      titleInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          submitAdd();
+        }
+      });
+
+      window.desktopPet.onDailyTodosUpdated((dailyTodos) => {
+        renderList(Array.isArray(dailyTodos) ? dailyTodos : []);
+      });
+
+      window.desktopPet.readDailyTodos().then((dailyTodos) => {
+        renderList(Array.isArray(dailyTodos) ? dailyTodos : []);
+      });
+    </script>
+  </body>
+</html>

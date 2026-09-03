@@ -1,0 +1,919 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Desktop Pet</title>
+    <style>
+      html,
+      body {
+        width: 100%;
+        height: 100%;
+        margin: 0;
+        overflow: hidden;
+        background: transparent;
+        user-select: none;
+      }
+
+      .pet {
+        width: 180px;
+        height: 180px;
+        position: absolute;
+        left: 30px;
+        top: 28px;
+        display: grid;
+        place-items: center;
+        font-size: 96px;
+        animation: idle 1.6s ease-in-out infinite;
+        cursor: grab;
+        touch-action: none;
+      }
+
+      .pet.dragging {
+        cursor: grabbing;
+      }
+
+      .pet-image,
+      .pet iframe {
+        max-width: 100%;
+        max-height: 100%;
+        pointer-events: none;
+      }
+
+      .external-pet {
+        width: 100%;
+        pointer-events: none;
+      }
+
+      .bubble {
+        position: absolute;
+        z-index: 5;
+        left: 18px;
+        top: 8px;
+        max-width: 206px;
+        padding: 7px 10px;
+        border-radius: 8px;
+        background: white;
+        color: #222;
+        font: 13px/1.3 system-ui, sans-serif;
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.18);
+        opacity: 0;
+        transform: translateY(4px);
+        transition: 160ms ease;
+        pointer-events: none;
+        white-space: pre-line;
+      }
+
+      .bubble.show {
+        opacity: 1;
+        transform: translateY(0);
+      }
+
+      .settings-panel {
+        position: absolute;
+        inset: 12px;
+        display: none;
+        flex-direction: column;
+        gap: 10px;
+        padding: 14px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.97);
+        color: #202124;
+        font: 13px/1.35 system-ui, sans-serif;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+      }
+
+      .settings-panel.open {
+        display: flex;
+      }
+
+      .settings-header,
+      .settings-actions,
+      .row-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .settings-header {
+        justify-content: space-between;
+      }
+
+      .settings-title {
+        font-size: 15px;
+        font-weight: 700;
+      }
+
+      .close-button,
+      .settings-button,
+      .tab-button {
+        border: 1px solid #d0d5dd;
+        border-radius: 7px;
+        background: #fff;
+        color: #202124;
+        font: inherit;
+        cursor: pointer;
+      }
+
+      .close-button {
+        width: 28px;
+        height: 28px;
+      }
+
+      .tabs {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+      }
+
+      .tab-button {
+        min-width: 0;
+        padding: 7px 4px;
+        font-size: 12px;
+      }
+
+      .tab-button.active {
+        background: #202124;
+        border-color: #202124;
+        color: #fff;
+      }
+
+      .tab-panel {
+        min-height: 0;
+        display: none;
+        flex-direction: column;
+        gap: 9px;
+        overflow: auto;
+        padding-right: 2px;
+      }
+
+      .tab-panel.active {
+        display: flex;
+      }
+
+      .settings-label {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-weight: 600;
+      }
+
+      .settings-label input,
+      .settings-label select,
+      .settings-label textarea {
+        min-height: 30px;
+        padding: 5px 7px;
+        border: 1px solid #d0d5dd;
+        border-radius: 7px;
+        font: inherit;
+      }
+
+      .settings-label textarea {
+        min-height: 64px;
+        resize: vertical;
+      }
+
+      .settings-help,
+      .schedule-list {
+        color: #5f6368;
+        font-size: 12px;
+      }
+
+      .settings-actions {
+        justify-content: flex-end;
+        margin-top: auto;
+      }
+
+      .settings-button {
+        padding: 7px 10px;
+      }
+
+      .settings-button.primary {
+        background: #202124;
+        border-color: #202124;
+        color: #fff;
+      }
+
+      .settings-button.danger {
+        color: #b42318;
+      }
+
+      .inline-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .schedule-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        max-height: 95px;
+        overflow: auto;
+        border-top: 1px solid #eaecf0;
+        padding-top: 8px;
+      }
+
+      .schedule-item {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 6px;
+        align-items: center;
+      }
+
+      .today-widget {
+        position: absolute;
+        inset: 12px;
+        display: none;
+        flex-direction: column;
+        gap: 10px;
+        padding: 14px;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.97);
+        color: #202124;
+        font: 13px/1.35 system-ui, sans-serif;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+      }
+
+      .today-widget.open {
+        display: flex;
+      }
+
+      .widget-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+      }
+
+      .today-widget-list {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        overflow: auto;
+        border-top: 1px solid #eaecf0;
+        border-bottom: 1px solid #eaecf0;
+        padding: 8px 0;
+      }
+
+      .today-widget-item {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 6px;
+        align-items: center;
+      }
+
+      .today-widget-item span {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+
+      .widget-add-row {
+        display: flex;
+        gap: 6px;
+      }
+
+      .widget-add-row input {
+        flex: 1;
+        min-width: 0;
+        padding: 6px 8px;
+        border: 1px solid #d0d5dd;
+        border-radius: 7px;
+        font: inherit;
+      }
+
+      @keyframes idle {
+        0%,
+        100% {
+          transform: translateY(0);
+        }
+        50% {
+          transform: translateY(-8px);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div id="bubble" class="bubble">안녕!</div>
+    <div id="pet" class="pet" title="drag or click"></div>
+
+    <section id="settingsPanel" class="settings-panel" aria-hidden="true">
+      <div class="settings-header">
+        <div class="settings-title">펫 설정</div>
+        <button id="closeSettings" class="close-button" type="button">X</button>
+      </div>
+
+      <div class="tabs">
+        <button class="tab-button active" type="button" data-tab="character">캐릭터</button>
+        <button class="tab-button" type="button" data-tab="bubble">말풍선</button>
+        <button class="tab-button" type="button" data-tab="schedule">할일</button>
+        <button class="tab-button" type="button" data-tab="ai">AI</button>
+        <button class="tab-button" type="button" data-tab="sync">동기화</button>
+      </div>
+
+      <div id="characterTab" class="tab-panel active">
+        <label class="settings-label">
+          표시 방식
+          <select id="petType">
+            <option value="emoji">이모티콘</option>
+            <option value="image">이미지/GIF</option>
+            <option value="external">외부 div</option>
+          </select>
+        </label>
+        <label class="settings-label">이모티콘 <input id="petEmoji" type="text" maxlength="8" /></label>
+        <label class="settings-label">이미지/GIF 파일명 <input id="petImage" type="text" placeholder="pet.gif" /></label>
+        <label class="settings-label">외부 HTML 파일명 <input id="petExternal" type="text" placeholder="external-pet.html" /></label>
+        <div class="settings-help">이미지나 HTML 파일은 이 앱 폴더 안에 넣어두면 됩니다.</div>
+      </div>
+
+      <div id="bubbleTab" class="tab-panel">
+        <label class="settings-label">클릭 말풍선 시간(ms) <input id="bubbleDuration" type="number" min="300" step="100" /></label>
+        <label class="settings-label">알람 말풍선 시간(ms) <input id="alarmDuration" type="number" min="500" step="100" /></label>
+        <div class="settings-help">1000ms가 1초입니다. 예: 3000은 3초.</div>
+      </div>
+
+      <div id="scheduleTab" class="tab-panel">
+        <div class="inline-grid">
+          <label class="settings-label">날짜 <input id="scheduleDate" type="date" /></label>
+          <label class="settings-label">시간 <input id="scheduleTime" type="time" /></label>
+        </div>
+        <label class="settings-label">제목 <input id="scheduleTitle" type="text" placeholder="회의, 약속, 할 일" /></label>
+        <label class="settings-label">메모 <input id="scheduleMemo" type="text" placeholder="선택 사항" /></label>
+        <div class="row-actions">
+          <button id="addSchedule" class="settings-button primary" type="button">할일 등록</button>
+          <button id="showSchedule" class="settings-button" type="button">오늘 할 일 보기</button>
+        </div>
+        <label class="settings-label">
+          AI로 할일 조율
+          <textarea id="aiScheduleText" placeholder="예: 내일 오후 3시에 병원 예약 / 병원 예약 4시로 옮겨줘 / 병원 예약 취소해줘"></textarea>
+        </label>
+        <button id="addScheduleAi" class="settings-button" type="button">AI로 처리</button>
+        <div id="scheduleList" class="schedule-list"></div>
+      </div>
+
+      <div id="aiTab" class="tab-panel">
+        <label class="settings-label">
+          AI 사용
+          <select id="aiEnabled">
+            <option value="false">끄기</option>
+            <option value="true">켜기</option>
+          </select>
+        </label>
+        <label class="settings-label">API 키 <input id="aiApiKey" type="password" placeholder="sk-..." /></label>
+        <label class="settings-label">모델 <input id="aiModel" type="text" placeholder="gpt-4o-mini" /></label>
+        <label class="settings-label">엔드포인트 <input id="aiEndpoint" type="text" /></label>
+        <div class="settings-help">API 키는 이 폴더의 settings.json에 저장됩니다. 혼자 쓰는 앱 기준으로만 사용하세요.</div>
+      </div>
+
+      <div id="syncTab" class="tab-panel">
+        <label class="settings-label">
+          동기화 사용
+          <select id="syncEnabled">
+            <option value="false">끄기 (로컬 파일만 사용)</option>
+            <option value="true">켜기 (폰 앱과 동기화)</option>
+          </select>
+        </label>
+        <label class="settings-label">서버 주소 <input id="syncApiUrl" type="text" placeholder="https://desktop-pet-backend.xxx.workers.dev" /></label>
+        <label class="settings-label">API 토큰 <input id="syncApiToken" type="password" placeholder="토큰 붙여넣기" /></label>
+        <button id="testSyncButton" class="settings-button" type="button">연결 테스트</button>
+        <div id="syncStatus" class="settings-help"></div>
+        <div class="settings-help">켜면 할일/데일리 할일이 이 서버에 저장되고, 로컬 schedule.json은 더 이상 쓰이지 않습니다. 폰 PWA랑 같은 서버 주소/토큰을 쓰면 서로 동기화됩니다.</div>
+      </div>
+
+      <div class="settings-actions">
+        <button id="previewSettings" class="settings-button" type="button">미리보기</button>
+        <button id="saveSettings" class="settings-button primary" type="button">저장</button>
+      </div>
+    </section>
+
+    <section id="todayWidget" class="today-widget" aria-hidden="true">
+      <div class="widget-header">
+        <div class="settings-title">오늘 할 일</div>
+        <button id="closeTodayWidget" class="close-button" type="button">X</button>
+      </div>
+      <div id="todayWidgetList" class="today-widget-list"></div>
+      <div class="widget-add-row">
+        <input id="todayWidgetInput" type="text" placeholder="새 할일 추가" />
+        <button id="todayWidgetAdd" class="settings-button primary" type="button">추가</button>
+      </div>
+      <div class="settings-help">마우스 휠 클릭으로 언제든 다시 열 수 있어요.</div>
+    </section>
+
+    <script type="text/javascript" async src="https://tenor.com/embed.js"></script>
+
+    <script>
+      const pet = document.getElementById("pet");
+      const bubble = document.getElementById("bubble");
+      const settingsPanel = document.getElementById("settingsPanel");
+      const closeSettings = document.getElementById("closeSettings");
+      const previewSettings = document.getElementById("previewSettings");
+      const saveSettings = document.getElementById("saveSettings");
+      const petType = document.getElementById("petType");
+      const petEmoji = document.getElementById("petEmoji");
+      const petImage = document.getElementById("petImage");
+      const petExternal = document.getElementById("petExternal");
+      const bubbleDuration = document.getElementById("bubbleDuration");
+      const alarmDuration = document.getElementById("alarmDuration");
+      const scheduleDate = document.getElementById("scheduleDate");
+      const scheduleTime = document.getElementById("scheduleTime");
+      const scheduleTitle = document.getElementById("scheduleTitle");
+      const scheduleMemo = document.getElementById("scheduleMemo");
+      const addSchedule = document.getElementById("addSchedule");
+      const showSchedule = document.getElementById("showSchedule");
+      const aiScheduleText = document.getElementById("aiScheduleText");
+      const addScheduleAi = document.getElementById("addScheduleAi");
+      const scheduleList = document.getElementById("scheduleList");
+      const aiEnabled = document.getElementById("aiEnabled");
+      const aiApiKey = document.getElementById("aiApiKey");
+      const aiModel = document.getElementById("aiModel");
+      const aiEndpoint = document.getElementById("aiEndpoint");
+      const syncEnabled = document.getElementById("syncEnabled");
+      const syncApiUrl = document.getElementById("syncApiUrl");
+      const syncApiToken = document.getElementById("syncApiToken");
+      const testSyncButton = document.getElementById("testSyncButton");
+      const syncStatus = document.getElementById("syncStatus");
+      const todayWidget = document.getElementById("todayWidget");
+      const closeTodayWidgetButton = document.getElementById("closeTodayWidget");
+      const todayWidgetList = document.getElementById("todayWidgetList");
+      const todayWidgetInput = document.getElementById("todayWidgetInput");
+      const todayWidgetAdd = document.getElementById("todayWidgetAdd");
+
+      let pointerDown = false;
+      let dragged = false;
+      let startX = 0;
+      let startY = 0;
+      let firedAlarmKeys = new Set();
+      let schedule = [];
+      let settings = {
+        bubbleDurationMs: 1200,
+        alarmDurationMs: 6000,
+        pet: { type: "emoji", emoji: "🙂", image: "pet.gif", externalHtmlFile: "external-pet.html" },
+        ai: { enabled: false, apiKey: "", endpoint: "https://api.openai.com/v1/chat/completions", model: "gpt-4o-mini" },
+        sync: { enabled: false, apiUrl: "", apiToken: "" },
+        alarms: []
+      };
+
+      function localDate() {
+        const now = new Date();
+        return [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
+      }
+
+      function escapeHtml(text) {
+        return String(text)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+      }
+
+      function showBubbleMessage(message = "안녕!", duration = settings.bubbleDurationMs) {
+        bubble.innerHTML = message;
+        bubble.classList.add("show");
+        window.clearTimeout(window.hideBubbleTimer);
+        window.hideBubbleTimer = window.setTimeout(() => bubble.classList.remove("show"), duration);
+      }
+
+      async function renderPet() {
+        pet.innerHTML = "";
+
+        if (settings.pet.type === "image") {
+          const image = document.createElement("img");
+          image.className = "pet-image";
+          image.src = settings.pet.image || "pet.gif";
+          image.alt = "pet";
+          pet.appendChild(image);
+          return;
+        }
+
+        if (settings.pet.type === "external") {
+          const wrapper = document.createElement("div");
+          wrapper.className = "external-pet";
+          wrapper.innerHTML = await window.desktopPet.readExternalHtml(settings.pet.externalHtmlFile);
+          pet.appendChild(wrapper);
+          if (window.tenorEmbed) window.tenorEmbed();
+          return;
+        }
+
+        const emoji = document.createElement("span");
+        emoji.className = "emoji-pet";
+        emoji.textContent = settings.pet.emoji || "🙂";
+        pet.appendChild(emoji);
+      }
+
+      function todayScheduleItems() {
+        const today = localDate();
+        const nowTime = new Date().toTimeString().slice(0, 5);
+        return schedule
+          .filter((item) => item.date === today)
+          .filter((item) => item.done || !item.time || item.time >= nowTime)
+          .sort((a, b) => {
+            if (Boolean(a.done) !== Boolean(b.done)) {
+              return a.done ? 1 : -1;
+            }
+            return `${a.time || "99:99"}`.localeCompare(`${b.time || "99:99"}`);
+          });
+      }
+
+      function allTodayItems() {
+        const today = localDate();
+        return schedule
+          .filter((item) => item.date === today)
+          .sort((a, b) => `${a.time || "99:99"}`.localeCompare(`${b.time || "99:99"}`));
+      }
+
+      function renderTodayWidget() {
+        todayWidgetList.innerHTML = "";
+        const items = allTodayItems();
+
+        if (!items.length) {
+          const hint = document.createElement("div");
+          hint.className = "settings-help";
+          hint.textContent = "오늘 등록된 할일이 없습니다.";
+          todayWidgetList.appendChild(hint);
+          return;
+        }
+
+        for (const item of items) {
+          const row = document.createElement("div");
+          row.className = "today-widget-item";
+
+          const done = document.createElement("input");
+          done.type = "checkbox";
+          done.checked = Boolean(item.done);
+          done.addEventListener("change", async () => {
+            item.done = done.checked;
+            label.style.textDecoration = done.checked ? "line-through" : "none";
+            await window.desktopPet.updateSchedule({ id: item.id, done: done.checked });
+          });
+
+          const label = document.createElement("span");
+          label.textContent = `${item.time ? `${item.time} ` : ""}${item.title}`;
+          label.style.cursor = "pointer";
+          if (item.done) {
+            label.style.textDecoration = "line-through";
+          }
+          label.addEventListener("click", () => {
+            done.checked = !done.checked;
+            done.dispatchEvent(new Event("change"));
+          });
+
+          const remove = document.createElement("button");
+          remove.className = "settings-button danger";
+          remove.type = "button";
+          remove.textContent = "삭제";
+          remove.addEventListener("click", async () => {
+            await window.desktopPet.deleteSchedule(item.id);
+          });
+
+          row.appendChild(done);
+          row.appendChild(label);
+          row.appendChild(remove);
+          todayWidgetList.appendChild(row);
+        }
+      }
+
+      function openTodayWidgetPanel() {
+        renderTodayWidget();
+        todayWidget.classList.add("open");
+        todayWidget.setAttribute("aria-hidden", "false");
+      }
+
+      function closeTodayWidgetPanel() {
+        todayWidget.classList.remove("open");
+        todayWidget.setAttribute("aria-hidden", "true");
+        window.desktopPet.closeTodayWidget();
+      }
+
+      function summarizeTodaySchedule() {
+        const items = todayScheduleItems();
+        if (!items.length) {
+          return "오늘 남은 할 일이 없어요.";
+        }
+
+        return items
+          .map((item) => {
+            const line = `${item.time ? `${item.time} ` : ""}${escapeHtml(item.title)}`;
+            return item.done ? `<s>${line}</s>` : line;
+          })
+          .join("\n");
+      }
+
+      function renderScheduleList() {
+        scheduleList.innerHTML = "";
+        const upcoming = [...schedule]
+          .sort((a, b) => `${a.date} ${a.time || "99:99"}`.localeCompare(`${b.date} ${b.time || "99:99"}`))
+          .slice(0, 5);
+
+        if (!upcoming.length) {
+          scheduleList.textContent = "등록된 할일이 없습니다.";
+          return;
+        }
+
+        for (const item of upcoming) {
+          const row = document.createElement("div");
+          row.className = "schedule-item";
+
+          const done = document.createElement("input");
+          done.type = "checkbox";
+          done.checked = Boolean(item.done);
+          done.addEventListener("change", async () => {
+            schedule = [...schedule];
+            item.done = done.checked;
+            await window.desktopPet.updateSchedule({ id: item.id, done: done.checked });
+          });
+
+          const label = document.createElement("span");
+          label.textContent = `${item.date} ${item.time || ""} ${item.title}`;
+          if (item.done) {
+            label.style.textDecoration = "line-through";
+            label.style.color = "#9aa0a6";
+          }
+
+          const textWrap = document.createElement("span");
+          textWrap.appendChild(done);
+          textWrap.appendChild(label);
+
+          const remove = document.createElement("button");
+          remove.className = "settings-button danger";
+          remove.type = "button";
+          remove.textContent = "삭제";
+          remove.addEventListener("click", async () => {
+            await window.desktopPet.deleteSchedule(item.id);
+            schedule = schedule.filter((next) => next.id !== item.id);
+            renderScheduleList();
+          });
+          row.appendChild(textWrap);
+          row.appendChild(remove);
+          scheduleList.appendChild(row);
+        }
+      }
+
+      function checkAlarms() {
+        const now = new Date();
+        const date = localDate();
+        const time = now.toTimeString().slice(0, 5);
+
+        for (const alarm of settings.alarms || []) {
+          const alarmKey = `fixed ${date} ${alarm.time}`;
+          if (alarm.time === time && !firedAlarmKeys.has(alarmKey)) {
+            firedAlarmKeys.add(alarmKey);
+            showBubbleMessage(escapeHtml(alarm.message), settings.alarmDurationMs);
+            return;
+          }
+        }
+
+        for (const item of schedule) {
+          if (item.done || !item.time || item.date !== date || item.time !== time) {
+            continue;
+          }
+
+          const itemKey = `todo ${item.id} ${date} ${item.time}`;
+          if (firedAlarmKeys.has(itemKey)) {
+            continue;
+          }
+
+          firedAlarmKeys.add(itemKey);
+          showBubbleMessage(`${escapeHtml(item.title)}${item.memo ? `\n${escapeHtml(item.memo)}` : ""}`, settings.alarmDurationMs);
+          return;
+        }
+      }
+
+      async function applySettings(nextSettings) {
+        settings = {
+          ...settings,
+          ...nextSettings,
+          pet: { ...settings.pet, ...(nextSettings.pet || {}) },
+          ai: { ...settings.ai, ...(nextSettings.ai || {}) },
+          sync: { ...settings.sync, ...(nextSettings.sync || {}) }
+        };
+        fillSettingsForm();
+        await renderPet();
+      }
+
+      function applySchedule(nextSchedule) {
+        schedule = Array.isArray(nextSchedule) ? nextSchedule : [];
+        renderScheduleList();
+        if (todayWidget.classList.contains("open")) {
+          renderTodayWidget();
+        }
+      }
+
+      function fillSettingsForm() {
+        petType.value = settings.pet.type || "emoji";
+        petEmoji.value = settings.pet.emoji || "🙂";
+        petImage.value = settings.pet.image || "pet.gif";
+        petExternal.value = settings.pet.externalHtmlFile || "external-pet.html";
+        bubbleDuration.value = settings.bubbleDurationMs || 1200;
+        alarmDuration.value = settings.alarmDurationMs || 6000;
+        aiEnabled.value = settings.ai.enabled ? "true" : "false";
+        aiApiKey.value = settings.ai.apiKey || "";
+        aiModel.value = settings.ai.model || "gpt-4o-mini";
+        aiEndpoint.value = settings.ai.endpoint || "https://api.openai.com/v1/chat/completions";
+        syncEnabled.value = settings.sync.enabled ? "true" : "false";
+        syncApiUrl.value = settings.sync.apiUrl || "";
+        syncApiToken.value = settings.sync.apiToken || "";
+        scheduleDate.value = scheduleDate.value || localDate();
+      }
+
+      function collectSettingsForm() {
+        return {
+          ...settings,
+          bubbleDurationMs: Number(bubbleDuration.value) || 1200,
+          alarmDurationMs: Number(alarmDuration.value) || 6000,
+          pet: {
+            ...settings.pet,
+            type: petType.value,
+            emoji: petEmoji.value || "🙂",
+            image: petImage.value || "pet.gif",
+            externalHtmlFile: petExternal.value || "external-pet.html"
+          },
+          ai: {
+            ...settings.ai,
+            enabled: aiEnabled.value === "true",
+            apiKey: aiApiKey.value,
+            model: aiModel.value || "gpt-4o-mini",
+            endpoint: aiEndpoint.value || "https://api.openai.com/v1/chat/completions"
+          },
+          sync: {
+            ...settings.sync,
+            enabled: syncEnabled.value === "true",
+            apiUrl: syncApiUrl.value.trim(),
+            apiToken: syncApiToken.value.trim()
+          }
+        };
+      }
+
+      function openSettingsPanel() {
+        fillSettingsForm();
+        renderScheduleList();
+        settingsPanel.classList.add("open");
+        settingsPanel.setAttribute("aria-hidden", "false");
+      }
+
+      function closeSettingsPanel() {
+        settingsPanel.classList.remove("open");
+        settingsPanel.setAttribute("aria-hidden", "true");
+        window.desktopPet.closeSettingsPanel();
+      }
+
+      window.desktopPet.readSettings().then(applySettings);
+      window.desktopPet.readSchedule().then(applySchedule);
+      window.desktopPet.onSettingsUpdated(applySettings);
+      window.desktopPet.onScheduleUpdated(applySchedule);
+      window.desktopPet.onSettingsPanelOpen(openSettingsPanel);
+      window.desktopPet.onTodayWidgetOpen(openTodayWidgetPanel);
+      window.setInterval(checkAlarms, 1000);
+
+      closeTodayWidgetButton.addEventListener("click", closeTodayWidgetPanel);
+
+      async function submitTodayWidgetAdd() {
+        const title = todayWidgetInput.value.trim();
+        if (!title) {
+          return;
+        }
+        await window.desktopPet.addSchedule({ date: localDate(), time: "", title, memo: "" });
+        todayWidgetInput.value = "";
+        renderTodayWidget();
+      }
+
+      todayWidgetAdd.addEventListener("click", submitTodayWidgetAdd);
+      todayWidgetInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          submitTodayWidgetAdd();
+        }
+      });
+
+      document.querySelectorAll(".tab-button").forEach((button) => {
+        button.addEventListener("click", () => {
+          document.querySelectorAll(".tab-button").forEach((tab) => tab.classList.toggle("active", tab === button));
+          document.querySelectorAll(".tab-panel").forEach((panel) => panel.classList.toggle("active", panel.id === `${button.dataset.tab}Tab`));
+        });
+      });
+
+      closeSettings.addEventListener("click", closeSettingsPanel);
+      showSchedule.addEventListener("click", () => showBubbleMessage(summarizeTodaySchedule(), settings.alarmDurationMs));
+
+      addSchedule.addEventListener("click", async () => {
+        const item = {
+          date: scheduleDate.value || localDate(),
+          time: scheduleTime.value || "",
+          title: scheduleTitle.value || "새 할일",
+          memo: scheduleMemo.value || ""
+        };
+        await window.desktopPet.addSchedule(item);
+        scheduleTitle.value = "";
+        scheduleMemo.value = "";
+        showBubbleMessage("할일을 등록했어요.", settings.bubbleDurationMs);
+      });
+
+      addScheduleAi.addEventListener("click", async () => {
+        try {
+          const text = aiScheduleText.value.trim();
+          if (!text) {
+            showBubbleMessage("처리할 할일을 입력해 주세요.", settings.bubbleDurationMs);
+            return;
+          }
+
+          const result = await window.desktopPet.addScheduleWithAi(text);
+          aiScheduleText.value = "";
+
+          const actionLabel = { add: "등록", update: "수정", delete: "삭제" }[result.action] || "처리";
+          let message = `할일을 ${actionLabel}했어요: ${escapeHtml(result.item.title)}`;
+          if (result.conflict) {
+            message += `\n주의: 같은 시간에 "${escapeHtml(result.conflict.title)}" 할일이 있어요.`;
+          }
+          showBubbleMessage(message, settings.alarmDurationMs);
+        } catch (error) {
+          showBubbleMessage(`AI 처리 실패: ${escapeHtml(error.message || "설정을 확인해 주세요.")}`, settings.alarmDurationMs);
+        }
+      });
+
+      previewSettings.addEventListener("click", async () => {
+        settings = collectSettingsForm();
+        await renderPet();
+        showBubbleMessage("미리보기", settings.bubbleDurationMs);
+      });
+
+      saveSettings.addEventListener("click", async () => {
+        const savedSettings = await window.desktopPet.saveSettings(collectSettingsForm());
+        await applySettings(savedSettings);
+        showBubbleMessage("저장됨", settings.bubbleDurationMs);
+      });
+
+      testSyncButton.addEventListener("click", async () => {
+        const url = syncApiUrl.value.trim();
+        const token = syncApiToken.value.trim();
+
+        if (!url || !token) {
+          syncStatus.textContent = "서버 주소와 토큰을 모두 입력해 주세요.";
+          syncStatus.style.color = "#b42318";
+          return;
+        }
+
+        syncStatus.textContent = "연결 확인 중...";
+        syncStatus.style.color = "";
+
+        try {
+          const response = await fetch(`${url.replace(/\/$/, "")}/todos`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+
+          syncStatus.textContent = "연결 성공! 저장을 눌러 적용하세요.";
+          syncStatus.style.color = "#1a7f37";
+        } catch (error) {
+          syncStatus.textContent = `연결 실패: ${error.message}`;
+          syncStatus.style.color = "#b42318";
+        }
+      });
+
+      pet.addEventListener("pointerdown", (event) => {
+        if (event.button !== 0) return;
+
+        pointerDown = true;
+        dragged = false;
+        startX = event.screenX;
+        startY = event.screenY;
+        pet.classList.add("dragging");
+        pet.setPointerCapture(event.pointerId);
+        window.desktopPet.startDrag({ x: event.screenX, y: event.screenY });
+      });
+
+      pet.addEventListener("pointermove", (event) => {
+        if (!pointerDown) return;
+
+        const distance = Math.hypot(event.screenX - startX, event.screenY - startY);
+        if (distance > 3) dragged = true;
+        window.desktopPet.moveDrag({ x: event.screenX, y: event.screenY });
+      });
+
+      pet.addEventListener("pointerup", (event) => {
+        if (event.button !== 0) return;
+
+        pointerDown = false;
+        pet.classList.remove("dragging");
+        window.desktopPet.endDrag();
+
+        if (!dragged) {
+          showBubbleMessage(summarizeTodaySchedule(), settings.alarmDurationMs);
+        }
+      });
+
+      pet.addEventListener("mousedown", (event) => {
+        if (event.button === 1) {
+          event.preventDefault();
+        }
+      });
+
+      pet.addEventListener("auxclick", (event) => {
+        if (event.button === 1) {
+          event.preventDefault();
+          window.desktopPet.openTodayWidget();
+        }
+      });
+    </script>
+  </body>
+</html>

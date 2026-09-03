@@ -1,0 +1,41 @@
+{
+  "name": "desktop-pet",
+  "version": "1.0.0",
+  "private": true,
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --win"
+  },
+  "devDependencies": {
+    "electron": "^31.0.0",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.desktoppet.app",
+    "productName": "DesktopPet",
+    "asar": false,
+    "files": [
+      "main.js",
+      "preload.js",
+      "pet.html",
+      "calendar.html",
+      "daily.html",
+      "external-pet.html",
+      "settings.json",
+      "schedule.json",
+      "*.jpg",
+      "*.gif",
+      "*.png",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": false
+    }
+  }
+}

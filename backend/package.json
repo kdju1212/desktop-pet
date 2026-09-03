@@ -1,0 +1,17 @@
+{
+  "name": "desktop-pet-backend",
+  "version": "1.0.0",
+  "description": "Cloudflare Workers + D1 backend for desktop-pet todo sync",
+  "private": true,
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "db:init": "wrangler d1 execute desktop-pet-db --file=./schema.sql",
+    "db:init:remote": "wrangler d1 execute desktop-pet-db --remote --file=./schema.sql"
+  },
+  "devDependencies": {
+    "wrangler": "^4.127.1"
+  }
+}

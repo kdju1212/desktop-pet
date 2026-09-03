@@ -1,0 +1,514 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>할일 펫</title>
+    <link rel="manifest" href="manifest.json" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <meta name="theme-color" content="#202124" />
+    <style>
+      * {
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      html,
+      body {
+        margin: 0;
+        min-height: 100%;
+        background: #f5f6f8;
+        color: #202124;
+        font: 15px/1.4 system-ui, -apple-system, sans-serif;
+      }
+
+      body {
+        padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom)
+          env(safe-area-inset-left);
+        padding-bottom: calc(env(safe-area-inset-bottom) + 16px);
+      }
+
+      header {
+        position: sticky;
+        top: 0;
+        z-index: 5;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 16px;
+        padding-top: calc(env(safe-area-inset-top) + 14px);
+        background: #fff;
+        border-bottom: 1px solid #e4e6eb;
+      }
+
+      .date-nav {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .date-title {
+        font-size: 16px;
+        font-weight: 700;
+        min-width: 92px;
+        text-align: center;
+      }
+
+      button {
+        border: 1px solid #d0d5dd;
+        border-radius: 10px;
+        background: #fff;
+        color: #202124;
+        font: inherit;
+        cursor: pointer;
+        padding: 10px 14px;
+        min-height: 40px;
+      }
+
+      button.icon-button {
+        padding: 8px 12px;
+        min-height: 36px;
+      }
+
+      button.primary {
+        background: #202124;
+        border-color: #202124;
+        color: #fff;
+      }
+
+      button.danger {
+        color: #b42318;
+        padding: 8px 12px;
+        min-height: 36px;
+      }
+
+      main {
+        padding: 16px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .todo-card {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: #fff;
+        border: 1px solid #e4e6eb;
+        border-radius: 12px;
+        padding: 12px 14px;
+      }
+
+      .todo-card input[type="checkbox"] {
+        width: 22px;
+        height: 22px;
+        flex: none;
+      }
+
+      .todo-label {
+        flex: 1;
+        min-width: 0;
+        cursor: pointer;
+      }
+
+      .todo-title {
+        font-size: 15px;
+        word-break: break-word;
+      }
+
+      .todo-time {
+        font-size: 12.5px;
+        color: #5f6368;
+      }
+
+      .todo-title.done {
+        text-decoration: line-through;
+        color: #9aa0a6;
+      }
+
+      .empty-hint {
+        color: #5f6368;
+        font-size: 13.5px;
+        text-align: center;
+        padding: 24px 0;
+      }
+
+      .add-bar {
+        position: sticky;
+        bottom: 0;
+        display: flex;
+        gap: 8px;
+        padding: 12px 16px;
+        padding-bottom: calc(env(safe-area-inset-bottom) + 12px);
+        background: #fff;
+        border-top: 1px solid #e4e6eb;
+      }
+
+      .add-bar input[type="text"] {
+        flex: 1;
+        min-width: 0;
+        padding: 10px 12px;
+        border: 1px solid #d0d5dd;
+        border-radius: 10px;
+        font: inherit;
+      }
+
+      .add-bar input[type="time"] {
+        width: 100px;
+        padding: 10px 6px;
+        border: 1px solid #d0d5dd;
+        border-radius: 10px;
+        font: inherit;
+      }
+
+      #setupScreen {
+        display: none;
+        flex-direction: column;
+        gap: 12px;
+        padding: 24px 20px;
+        max-width: 420px;
+        margin: 0 auto;
+      }
+
+      #setupScreen.open {
+        display: flex;
+      }
+
+      #appScreen.hidden {
+        display: none;
+      }
+
+      .setup-title {
+        font-size: 19px;
+        font-weight: 700;
+      }
+
+      .setup-help {
+        color: #5f6368;
+        font-size: 13.5px;
+        line-height: 1.5;
+      }
+
+      label {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        font-weight: 600;
+        font-size: 13.5px;
+      }
+
+      label input {
+        padding: 10px 12px;
+        border: 1px solid #d0d5dd;
+        border-radius: 10px;
+        font: inherit;
+      }
+
+      .status {
+        min-height: 18px;
+        font-size: 13px;
+      }
+    </style>
+  </head>
+  <body>
+    <section id="setupScreen">
+      <div class="setup-title">할일 펫 연결</div>
+      <div class="setup-help">
+        데스크톱 펫 백엔드 주소와 API 토큰을 입력하세요. 이 정보는 이 기기의 브라우저에만 저장되고 외부로 전송되지
+        않습니다.
+      </div>
+      <label>서버 주소 <input id="apiUrlInput" type="text" placeholder="https://desktop-pet-backend.xxx.workers.dev" /></label>
+      <label>API 토큰 <input id="apiTokenInput" type="password" placeholder="토큰 붙여넣기" /></label>
+      <button id="saveSetupButton" class="primary" type="button">연결하기</button>
+      <div id="setupStatus" class="status"></div>
+    </section>
+
+    <div id="appScreen" class="hidden">
+      <header>
+        <div class="date-nav">
+          <button id="prevDayButton" class="icon-button" type="button">◀</button>
+          <div id="dateTitle" class="date-title">-</div>
+          <button id="nextDayButton" class="icon-button" type="button">▶</button>
+        </div>
+        <div style="display: flex; gap: 8px">
+          <button id="todayButton" class="icon-button" type="button">오늘</button>
+          <button id="settingsButton" class="icon-button" type="button">⚙</button>
+        </div>
+      </header>
+
+      <main>
+        <div id="todoList"></div>
+      </main>
+
+      <div class="add-bar">
+        <input id="addTitleInput" type="text" placeholder="새 할일" />
+        <input id="addTimeInput" type="time" />
+        <button id="addButton" class="primary" type="button">추가</button>
+      </div>
+    </div>
+
+    <script>
+      const setupScreen = document.getElementById("setupScreen");
+      const appScreen = document.getElementById("appScreen");
+      const apiUrlInput = document.getElementById("apiUrlInput");
+      const apiTokenInput = document.getElementById("apiTokenInput");
+      const saveSetupButton = document.getElementById("saveSetupButton");
+      const setupStatus = document.getElementById("setupStatus");
+      const settingsButton = document.getElementById("settingsButton");
+
+      const dateTitle = document.getElementById("dateTitle");
+      const prevDayButton = document.getElementById("prevDayButton");
+      const nextDayButton = document.getElementById("nextDayButton");
+      const todayButton = document.getElementById("todayButton");
+      const todoList = document.getElementById("todoList");
+      const addTitleInput = document.getElementById("addTitleInput");
+      const addTimeInput = document.getElementById("addTimeInput");
+      const addButton = document.getElementById("addButton");
+
+      let apiUrl = localStorage.getItem("todoPetApiUrl") || "";
+      let apiToken = localStorage.getItem("todoPetApiToken") || "";
+      let selectedDate = todayKey();
+
+      function todayKey() {
+        const now = new Date();
+        return [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
+      }
+
+      function shiftDate(dateKey, days) {
+        const [y, m, d] = dateKey.split("-").map(Number);
+        const next = new Date(y, m - 1, d + days);
+        return [next.getFullYear(), String(next.getMonth() + 1).padStart(2, "0"), String(next.getDate()).padStart(2, "0")].join("-");
+      }
+
+      function formatDateTitle(dateKey) {
+        const [y, m, d] = dateKey.split("-").map(Number);
+        const date = new Date(y, m - 1, d);
+        const weekday = ["일", "월", "화", "수", "목", "금", "토"][date.getDay()];
+        return `${m}/${d} (${weekday})`;
+      }
+
+      async function api(path, options = {}) {
+        const response = await fetch(apiUrl.replace(/\/$/, "") + path, {
+          ...options,
+          headers: {
+            Authorization: `Bearer ${apiToken}`,
+            "Content-Type": "application/json",
+            ...(options.headers || {})
+          }
+        });
+
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({}));
+          throw new Error(body.error || `요청 실패 (${response.status})`);
+        }
+
+        if (response.status === 204) {
+          return null;
+        }
+
+        return response.json();
+      }
+
+      function showSetup(message) {
+        appScreen.classList.add("hidden");
+        setupScreen.classList.add("open");
+        apiUrlInput.value = apiUrl;
+        apiTokenInput.value = apiToken;
+        setupStatus.textContent = message || "";
+        setupStatus.style.color = message ? "#b42318" : "";
+      }
+
+      function showApp() {
+        setupScreen.classList.remove("open");
+        appScreen.classList.remove("hidden");
+      }
+
+      saveSetupButton.addEventListener("click", async () => {
+        const nextUrl = apiUrlInput.value.trim();
+        const nextToken = apiTokenInput.value.trim();
+
+        if (!nextUrl || !nextToken) {
+          setupStatus.textContent = "서버 주소와 토큰을 모두 입력해 주세요.";
+          setupStatus.style.color = "#b42318";
+          return;
+        }
+
+        apiUrl = nextUrl;
+        apiToken = nextToken;
+
+        try {
+          await api("/todos?date=" + todayKey());
+          localStorage.setItem("todoPetApiUrl", apiUrl);
+          localStorage.setItem("todoPetApiToken", apiToken);
+          showApp();
+          await loadTodos();
+        } catch (error) {
+          setupStatus.textContent = `연결 실패: ${error.message}`;
+          setupStatus.style.color = "#b42318";
+        }
+      });
+
+      settingsButton.addEventListener("click", () => showSetup());
+
+      function renderTodos(items) {
+        todoList.innerHTML = "";
+
+        if (!items.length) {
+          const hint = document.createElement("div");
+          hint.className = "empty-hint";
+          hint.textContent = "이 날짜에 등록된 할일이 없습니다.";
+          todoList.appendChild(hint);
+          return;
+        }
+
+        const sorted = [...items].sort((a, b) => `${a.time || "99:99"}`.localeCompare(`${b.time || "99:99"}`));
+
+        for (const item of sorted) {
+          const card = document.createElement("div");
+          card.className = "todo-card";
+
+          const checkbox = document.createElement("input");
+          checkbox.type = "checkbox";
+          checkbox.checked = Boolean(item.done);
+
+          const label = document.createElement("div");
+          label.className = "todo-label";
+
+          const titleEl = document.createElement("div");
+          titleEl.className = "todo-title" + (item.done ? " done" : "");
+          titleEl.textContent = item.title;
+          label.appendChild(titleEl);
+
+          if (item.time) {
+            const timeEl = document.createElement("div");
+            timeEl.className = "todo-time";
+            timeEl.textContent = item.time;
+            label.appendChild(timeEl);
+          }
+
+          async function toggleDone() {
+            checkbox.checked = !checkbox.checked;
+            titleEl.classList.toggle("done", checkbox.checked);
+            try {
+              await api(`/todos/${item.id}`, { method: "PATCH", body: JSON.stringify({ done: checkbox.checked }) });
+            } catch (error) {
+              checkbox.checked = !checkbox.checked;
+              titleEl.classList.toggle("done", checkbox.checked);
+              alert(`업데이트 실패: ${error.message}`);
+            }
+          }
+
+          checkbox.addEventListener("change", toggleDone);
+          label.addEventListener("click", (event) => {
+            if (event.target !== checkbox) {
+              toggleDone();
+            }
+          });
+
+          const remove = document.createElement("button");
+          remove.className = "danger";
+          remove.type = "button";
+          remove.textContent = "삭제";
+          remove.addEventListener("click", async () => {
+            try {
+              await api(`/todos/${item.id}`, { method: "DELETE" });
+              card.remove();
+              if (!todoList.children.length) {
+                renderTodos([]);
+              }
+            } catch (error) {
+              alert(`삭제 실패: ${error.message}`);
+            }
+          });
+
+          card.appendChild(checkbox);
+          card.appendChild(label);
+          card.appendChild(remove);
+          todoList.appendChild(card);
+        }
+      }
+
+      async function loadTodos() {
+        dateTitle.textContent = formatDateTitle(selectedDate);
+        todoList.innerHTML = "";
+        try {
+          const items = await api(`/todos?date=${selectedDate}`);
+          renderTodos(items);
+        } catch (error) {
+          const hint = document.createElement("div");
+          hint.className = "empty-hint";
+          hint.textContent = `불러오기 실패: ${error.message}`;
+          todoList.appendChild(hint);
+        }
+      }
+
+      prevDayButton.addEventListener("click", () => {
+        selectedDate = shiftDate(selectedDate, -1);
+        loadTodos();
+      });
+
+      nextDayButton.addEventListener("click", () => {
+        selectedDate = shiftDate(selectedDate, 1);
+        loadTodos();
+      });
+
+      todayButton.addEventListener("click", () => {
+        selectedDate = todayKey();
+        loadTodos();
+      });
+
+      async function submitAdd() {
+        const title = addTitleInput.value.trim();
+        if (!title) {
+          return;
+        }
+
+        addButton.disabled = true;
+        try {
+          await api("/todos", {
+            method: "POST",
+            body: JSON.stringify({ date: selectedDate, time: addTimeInput.value || "", title })
+          });
+          addTitleInput.value = "";
+          addTimeInput.value = "";
+          await loadTodos();
+        } catch (error) {
+          alert(`추가 실패: ${error.message}`);
+        } finally {
+          addButton.disabled = false;
+        }
+      }
+
+      addButton.addEventListener("click", submitAdd);
+      addTitleInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          submitAdd();
+        }
+      });
+
+      async function init() {
+        if (!apiUrl || !apiToken) {
+          showSetup();
+          return;
+        }
+
+        try {
+          await api("/daily/instantiate", { method: "POST" });
+        } catch {
+          // ignore; daily instantiation is best-effort
+        }
+
+        showApp();
+        await loadTodos();
+      }
+
+      if ("serviceWorker" in navigator) {
+        window.addEventListener("load", () => {
+          navigator.serviceWorker.register("sw.js").catch(() => {});
+        });
+      }
+
+      init();
+    </script>
+  </body>
+</html>
