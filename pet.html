@@ -147,6 +147,11 @@
         font-weight: 700;
       }
 
+      .app-version {
+        color: #9aa0a6;
+        font-size: 11px;
+      }
+
       .close-button,
       .settings-button,
       .tab-button {
@@ -348,6 +353,7 @@
     <div id="pet" class="pet" title="drag or click"></div>
 
     <section id="settingsPanel" class="settings-panel" aria-hidden="true">
+      <div id="appVersion" class="app-version"></div>
       <div class="settings-header">
         <div class="settings-title">펫 설정</div>
         <button id="closeSettings" class="close-button" type="button">X</button>
@@ -458,6 +464,7 @@
       const actionCapture = document.getElementById("actionCapture");
       const actionChat = document.getElementById("actionChat");
       const settingsPanel = document.getElementById("settingsPanel");
+      const appVersion = document.getElementById("appVersion");
       const closeSettings = document.getElementById("closeSettings");
       const previewSettings = document.getElementById("previewSettings");
       const saveSettings = document.getElementById("saveSettings");
@@ -823,6 +830,9 @@
 
       window.desktopPet.readSettings().then(applySettings);
       window.desktopPet.readSchedule().then(applySchedule);
+      window.desktopPet.getVersion().then((version) => {
+        appVersion.textContent = `v${version}`;
+      });
       window.desktopPet.onSettingsUpdated(applySettings);
       window.desktopPet.onScheduleUpdated(applySchedule);
       window.desktopPet.onSettingsPanelOpen(openSettingsPanel);
