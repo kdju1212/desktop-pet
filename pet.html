@@ -45,11 +45,18 @@
         pointer-events: none;
       }
 
-      .bubble {
+      .click-panel {
         position: absolute;
         z-index: 5;
         left: 18px;
         top: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        pointer-events: none;
+      }
+
+      .bubble {
         max-width: 206px;
         padding: 7px 10px;
         border-radius: 8px;
@@ -60,7 +67,6 @@
         opacity: 0;
         transform: translateY(4px);
         transition: 160ms ease;
-        pointer-events: none;
         white-space: pre-line;
       }
 
@@ -70,10 +76,6 @@
       }
 
       .action-menu {
-        position: absolute;
-        z-index: 6;
-        left: 18px;
-        top: 8px;
         display: flex;
         flex-direction: column;
         gap: 6px;
@@ -332,11 +334,12 @@
     </style>
   </head>
   <body>
-    <div id="bubble" class="bubble">안녕!</div>
-    <div id="actionMenu" class="action-menu">
-      <button id="actionToday" class="action-bubble" type="button">📋 오늘 할일 보기</button>
-      <button id="actionCapture" class="action-bubble" type="button">🖼️ 화면 캡처 AI 도움</button>
-      <button id="actionChat" class="action-bubble" type="button">💬 AI와 대화</button>
+    <div id="clickPanel" class="click-panel">
+      <div id="bubble" class="bubble">안녕!</div>
+      <div id="actionMenu" class="action-menu">
+        <button id="actionCapture" class="action-bubble" type="button">🖼️ 화면 캡처 AI 도움</button>
+        <button id="actionChat" class="action-bubble" type="button">💬 AI와 대화</button>
+      </div>
     </div>
     <div id="pet" class="pet" title="drag or click"></div>
 
@@ -448,7 +451,6 @@
       const pet = document.getElementById("pet");
       const bubble = document.getElementById("bubble");
       const actionMenu = document.getElementById("actionMenu");
-      const actionToday = document.getElementById("actionToday");
       const actionCapture = document.getElementById("actionCapture");
       const actionChat = document.getElementById("actionChat");
       const settingsPanel = document.getElementById("settingsPanel");
@@ -957,13 +959,9 @@
         window.desktopPet.endDrag();
 
         if (!dragged) {
+          showBubbleMessage(summarizeTodaySchedule(), settings.alarmDurationMs);
           toggleActionMenu();
         }
-      });
-
-      actionToday.addEventListener("click", () => {
-        closeActionMenu();
-        showBubbleMessage(summarizeTodaySchedule(), settings.alarmDurationMs);
       });
 
       actionCapture.addEventListener("click", async () => {
