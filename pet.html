@@ -838,7 +838,7 @@
       window.desktopPet.onSettingsPanelOpen(openSettingsPanel);
       window.desktopPet.onTodayWidgetOpen(openTodayWidgetPanel);
       window.desktopPet.onUpdateReady(() => {
-        showBubbleMessage("업데이트가 준비됐어요. 앱을 재시작하면 적용됩니다.", settings.alarmDurationMs);
+        showBubbleMessage("업데이트가 준비됐어요. 우클릭 > 재시작을 누르면 바로 적용됩니다.", settings.alarmDurationMs);
       });
       window.setInterval(checkAlarms, 1000);
 
