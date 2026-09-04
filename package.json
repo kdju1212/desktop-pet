@@ -23,7 +23,7 @@
       "provider": "github",
       "owner": "kdju1212",
       "repo": "desktop-pet",
-      "draft": false
+      "releaseType": "release"
     },
     "files": [
       "main.js",
