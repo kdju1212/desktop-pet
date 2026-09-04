@@ -13,6 +13,9 @@ contextBridge.exposeInMainWorld("desktopPet", {
   readSettings() {
     return ipcRenderer.invoke("settings-read");
   },
+  getVersion() {
+    return ipcRenderer.invoke("app-version");
+  },
   saveSettings(settings) {
     return ipcRenderer.invoke("settings-save", settings);
   },

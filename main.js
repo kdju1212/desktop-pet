@@ -589,6 +589,8 @@ ipcMain.on("today-widget-close", (event) => {
 
 ipcMain.handle("settings-read", () => readSettings());
 
+ipcMain.handle("app-version", () => app.getVersion());
+
 ipcMain.handle("settings-save", (event, nextSettings) => {
   const currentSettings = readSettings();
   const mergedSettings = {
