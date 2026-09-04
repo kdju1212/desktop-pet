@@ -89,11 +89,11 @@ API 키는 이 폴더의 `settings.json`에 평문으로 저장됩니다. 혼자
 
 **방법 A: GitHub Actions로 자동 배포 (추천)**
 
-`.github/workflows/release.yml`이 `v`로 시작하는 태그가 푸시되면 자동으로 Windows 빌드 서버에서 빌드하고 GitHub Releases에 올려줍니다. 로컬에 Node.js가 없어도, 직접 빌드하지 않아도 됩니다.
+`.github/workflows/release.yml`이 `v`로 시작하는 태그가 푸시되면 자동으로 Windows 빌드 서버에서 빌드하고 GitHub Releases에 바로 공개(publish) 상태로 올려줍니다 (`publish.draft: false`). 로컬에 Node.js가 없어도, 직접 빌드하지 않아도, 발행 버튼을 따로 누르지 않아도 됩니다.
 
-1. `package.json`의 `version`을 올립니다 (예: `1.1.0` → `1.2.0`).
-2. 커밋 후 그 버전과 같은 태그를 붙여 푸시합니다: `git tag v1.2.0 && git push origin v1.2.0`
-3. GitHub Actions 탭에서 빌드가 끝날 때까지 기다리면 (몇 분) Releases에 새 버전이 자동으로 올라갑니다.
+1. `package.json`의 `version`을 올립니다 (예: `1.1.1` → `1.2.0`).
+2. 커밋 후 그 버전과 같은 태그를 붙여 푸시합니다: `git tag v1.2.0 && git push origin v1.2.0` (또는 GitHub Actions 탭에서 release 워크플로를 "Run workflow"로 수동 실행)
+3. GitHub Actions 탭에서 빌드가 끝날 때까지 기다리면 (1~2분) Releases에 새 버전이 자동으로 공개됩니다.
 
 **방법 B: 로컬에서 직접 빌드**
 

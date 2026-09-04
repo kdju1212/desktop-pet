@@ -22,7 +22,8 @@
     "publish": {
       "provider": "github",
       "owner": "kdju1212",
-      "repo": "desktop-pet"
+      "repo": "desktop-pet",
+      "draft": false
     },
     "files": [
       "main.js",
