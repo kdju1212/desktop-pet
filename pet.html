@@ -76,11 +76,15 @@
       }
 
       .action-menu {
+        position: absolute;
+        z-index: 6;
+        left: 18px;
+        bottom: 4px;
         display: flex;
         flex-direction: column;
         gap: 6px;
         opacity: 0;
-        transform: translateY(4px);
+        transform: translateY(-4px);
         transition: 160ms ease;
         pointer-events: none;
       }
@@ -336,10 +340,10 @@
   <body>
     <div id="clickPanel" class="click-panel">
       <div id="bubble" class="bubble">안녕!</div>
-      <div id="actionMenu" class="action-menu">
-        <button id="actionCapture" class="action-bubble" type="button">🖼️ 화면 캡처 AI 도움</button>
-        <button id="actionChat" class="action-bubble" type="button">💬 AI와 대화</button>
-      </div>
+    </div>
+    <div id="actionMenu" class="action-menu">
+      <button id="actionCapture" class="action-bubble" type="button">🖼️ 화면 캡처 AI 도움</button>
+      <button id="actionChat" class="action-bubble" type="button">💬 AI와 대화</button>
     </div>
     <div id="pet" class="pet" title="drag or click"></div>
 
@@ -523,10 +527,13 @@
 
       function closeActionMenu() {
         actionMenu.classList.remove("show");
+        window.clearTimeout(window.hideActionMenuTimer);
       }
 
-      function toggleActionMenu() {
-        actionMenu.classList.toggle("show");
+      function openActionMenu(duration = settings.alarmDurationMs) {
+        actionMenu.classList.add("show");
+        window.clearTimeout(window.hideActionMenuTimer);
+        window.hideActionMenuTimer = window.setTimeout(() => actionMenu.classList.remove("show"), duration);
       }
 
       async function renderPet() {
@@ -960,7 +967,7 @@
 
         if (!dragged) {
           showBubbleMessage(summarizeTodaySchedule(), settings.alarmDurationMs);
-          toggleActionMenu();
+          openActionMenu(settings.alarmDurationMs);
         }
       });
 
