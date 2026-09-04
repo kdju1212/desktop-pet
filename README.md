@@ -86,11 +86,23 @@ API 키는 이 폴더의 `settings.json`에 평문으로 저장됩니다. 혼자
 
 `electron-updater`가 붙어있어서, 앱이 실행될 때(그리고 1시간마다) GitHub Releases를 확인해 새 버전이 있으면 자동으로 내려받고, 앱을 재시작하면 조용히 설치됩니다. 업데이트가 준비되면 펫이 말풍선으로 알려줍니다.
 
-새 버전을 배포하려면:
+새 버전을 배포하는 방법은 두 가지입니다.
 
-1. `package.json`의 `version`을 올립니다 (예: `1.1.0` → `1.2.0`). 버전이 같으면 업데이트로 인식하지 않습니다.
-2. GitHub에 [Personal Access Token](https://github.com/settings/tokens)을 발급받아 `repo` 권한을 준 뒤, 환경변수로 설정합니다: `set GH_TOKEN=발급받은토큰` (PowerShell은 `$env:GH_TOKEN="..."`)
-3. `npm run dist:publish`를 실행하면 electron-builder가 빌드 후 자동으로 GitHub Releases에 인스톨러와 `latest.yml`을 올립니다. (직접 zip을 만들어 수동으로 올리면 `latest.yml`이 없어서 자동 업데이트가 이 릴리즈를 인식하지 못합니다.)
+**방법 A: GitHub Actions로 자동 배포 (추천)**
+
+`.github/workflows/release.yml`이 `v`로 시작하는 태그가 푸시되면 자동으로 Windows 빌드 서버에서 빌드하고 GitHub Releases에 올려줍니다. 로컬에 Node.js가 없어도, 직접 빌드하지 않아도 됩니다.
+
+1. `package.json`의 `version`을 올립니다 (예: `1.1.0` → `1.2.0`).
+2. 커밋 후 그 버전과 같은 태그를 붙여 푸시합니다: `git tag v1.2.0 && git push origin v1.2.0`
+3. GitHub Actions 탭에서 빌드가 끝날 때까지 기다리면 (몇 분) Releases에 새 버전이 자동으로 올라갑니다.
+
+**방법 B: 로컬에서 직접 빌드**
+
+1. `package.json`의 `version`을 올립니다.
+2. GitHub에 [Personal Access Token](https://github.com/settings/tokens)을 발급받아 `repo` 권한을 준 뒤, 환경변수로 설정합니다: PowerShell은 `$env:GH_TOKEN="..."`
+3. `npm run dist:publish`를 실행하면 electron-builder가 빌드 후 자동으로 GitHub Releases에 인스톨러와 `latest.yml`을 올립니다.
+
+어느 방법이든 직접 zip을 만들어 수동으로 올리면 `latest.yml`이 없어서 자동 업데이트가 이 릴리즈를 인식하지 못합니다.
 
 주의: 이 자동 업데이트 기능이 처음 들어간 버전(v1.1.0)부터 적용됩니다. 그 이전 버전(v1.0.0 zip)을 이미 설치해서 쓰고 계셨다면, 그 버전에는 업데이트를 확인하는 코드 자체가 없으므로 이번 한 번은 v1.1.0을 수동으로 받아서 설치해야 하고, 그 다음부터는 자동으로 갱신됩니다.
 
