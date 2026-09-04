@@ -69,5 +69,17 @@ contextBridge.exposeInMainWorld("desktopPet", {
   },
   onDailyTodosUpdated(callback) {
     ipcRenderer.on("desktop-pet-daily-todos", (_event, dailyTodos) => callback(dailyTodos));
+  },
+  captureScreenHelp() {
+    return ipcRenderer.invoke("ai-capture-help");
+  },
+  openAiChat() {
+    ipcRenderer.send("ai-chat-open-request");
+  },
+  sendChatMessage(message, history) {
+    return ipcRenderer.invoke("ai-chat-send", { message, history });
+  },
+  onUpdateReady(callback) {
+    ipcRenderer.on("desktop-pet-update-ready", callback);
   }
 });

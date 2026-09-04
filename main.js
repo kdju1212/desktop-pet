@@ -1,6 +1,7 @@
 const path = require("path");
 const fs = require("fs");
-const { app, BrowserWindow, Menu, ipcMain } = require("electron");
+const { app, BrowserWindow, Menu, ipcMain, desktopCapturer, screen } = require("electron");
+const { autoUpdater } = require("electron-updater");
 
 const dragOffsets = new Map();
 const settingsPath = path.join(__dirname, "settings.json");
@@ -9,6 +10,7 @@ const schedulePath = path.join(__dirname, "schedule.json");
 let petWin = null;
 let calendarWin = null;
 let dailyWin = null;
+let aiChatWin = null;
 
 const defaultSettings = {
   bubbleDurationMs: 1200,
@@ -287,6 +289,45 @@ async function ensureDailyTodosForToday() {
   }
 }
 
+async function requestAiCompletion(settings, messages) {
+  const response = await fetch(settings.ai.endpoint, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${settings.ai.apiKey}`
+    },
+    body: JSON.stringify({
+      model: settings.ai.model,
+      temperature: 0.4,
+      messages
+    })
+  });
+
+  if (!response.ok) {
+    throw new Error(`AI request failed: ${response.status}`);
+  }
+
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content || "";
+}
+
+async function captureScreenDataUrl() {
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const sources = await desktopCapturer.getSources({
+    types: ["screen"],
+    thumbnailSize: {
+      width: Math.round(primaryDisplay.size.width * primaryDisplay.scaleFactor),
+      height: Math.round(primaryDisplay.size.height * primaryDisplay.scaleFactor)
+    }
+  });
+
+  if (!sources.length) {
+    throw new Error("화면을 캡처할 수 없습니다.");
+  }
+
+  return sources[0].thumbnail.toDataURL();
+}
+
 function openSettings(win) {
   win.setSize(420, 560);
   win.webContents.send("settings-panel-open");
@@ -369,6 +410,62 @@ function openDailyTodos() {
   });
 }
 
+function openAiChat() {
+  if (aiChatWin && !aiChatWin.isDestroyed()) {
+    aiChatWin.focus();
+    return;
+  }
+
+  aiChatWin = new BrowserWindow({
+    width: 360,
+    height: 520,
+    minWidth: 300,
+    minHeight: 400,
+    title: "AI와 대화",
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      nodeIntegration: false,
+      contextIsolation: true
+    }
+  });
+
+  aiChatWin.setMenuBarVisibility(false);
+  aiChatWin.loadFile("ai-chat.html");
+
+  aiChatWin.on("closed", () => {
+    aiChatWin = null;
+  });
+}
+
+function setupAutoUpdater() {
+  if (!app.isPackaged) {
+    return;
+  }
+
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on("update-downloaded", () => {
+    if (petWin && !petWin.isDestroyed()) {
+      petWin.webContents.send("desktop-pet-update-ready");
+    }
+  });
+
+  autoUpdater.on("error", (err) => {
+    console.error("Auto-update failed:", err.message);
+  });
+
+  autoUpdater.checkForUpdates().catch((err) => {
+    console.error("Auto-update check failed:", err.message);
+  });
+
+  setInterval(() => {
+    autoUpdater.checkForUpdates().catch((err) => {
+      console.error("Auto-update check failed:", err.message);
+    });
+  }, 60 * 60 * 1000);
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 240,
@@ -424,6 +521,7 @@ function createWindow() {
 
 app.whenReady().then(() => {
   createWindow();
+  setupAutoUpdater();
   ensureDailyTodosForToday();
   setInterval(ensureDailyTodosForToday, 5 * 60 * 1000);
 
@@ -665,4 +763,62 @@ ipcMain.handle("ai-schedule-add", async (event, text) => {
   broadcastSchedule();
 
   return { action, item, conflict: conflict || null, schedule: savedSchedule };
+});
+
+ipcMain.handle("ai-capture-help", async () => {
+  const settings = readSettings();
+
+  if (!settings.ai.enabled || !settings.ai.apiKey) {
+    throw new Error("AI가 설정되어 있지 않습니다. 설정 > AI 탭에서 켜주세요.");
+  }
+
+  const imageDataUrl = await captureScreenDataUrl();
+
+  const reply = await requestAiCompletion(settings, [
+    {
+      role: "system",
+      content:
+        "You are a helpful desktop assistant looking at a screenshot of the user's screen. " +
+        "Briefly describe what's on screen and offer concrete, actionable help. Respond in Korean, under 6 short lines."
+    },
+    {
+      role: "user",
+      content: [
+        { type: "text", text: "이 화면을 보고 무엇을 하면 좋을지 도와줘." },
+        { type: "image_url", image_url: { url: imageDataUrl } }
+      ]
+    }
+  ]);
+
+  return { reply };
+});
+
+ipcMain.on("ai-chat-open-request", () => {
+  openAiChat();
+});
+
+ipcMain.handle("ai-chat-send", async (event, payload) => {
+  const settings = readSettings();
+
+  if (!settings.ai.enabled || !settings.ai.apiKey) {
+    throw new Error("AI가 설정되어 있지 않습니다. 설정 > AI 탭에서 켜주세요.");
+  }
+
+  const history = Array.isArray(payload?.history) ? payload.history : [];
+  const message = payload?.message || "";
+
+  const messages = [
+    {
+      role: "system",
+      content: "You are a friendly desktop pet assistant. Keep replies concise and reply in Korean unless the user writes in another language."
+    },
+    ...history.slice(-10).map((entry) => ({
+      role: entry.role === "assistant" ? "assistant" : "user",
+      content: entry.content
+    })),
+    { role: "user", content: message }
+  ];
+
+  const reply = await requestAiCompletion(settings, messages);
+  return { reply };
 });

@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI와 대화</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        font: 13px/1.4 system-ui, sans-serif;
+        color: #202124;
+        background: #fff;
+      }
+
+      body {
+        display: flex;
+        flex-direction: column;
+        padding: 16px;
+        gap: 10px;
+      }
+
+      .title {
+        font-size: 15px;
+        font-weight: 700;
+      }
+
+      .help {
+        color: #5f6368;
+        font-size: 12px;
+      }
+
+      .messages {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        overflow: auto;
+        border-top: 1px solid #eaecf0;
+        border-bottom: 1px solid #eaecf0;
+        padding: 8px 4px;
+      }
+
+      .empty-hint {
+        color: #5f6368;
+        font-size: 12.5px;
+      }
+
+      .msg {
+        max-width: 85%;
+        padding: 7px 10px;
+        border-radius: 10px;
+        white-space: pre-line;
+        word-break: break-word;
+      }
+
+      .msg.user {
+        align-self: flex-end;
+        background: #202124;
+        color: #fff;
+      }
+
+      .msg.assistant {
+        align-self: flex-start;
+        background: #f2f3f5;
+        color: #202124;
+      }
+
+      .msg.error {
+        align-self: flex-start;
+        background: #fdecea;
+        color: #b42318;
+      }
+
+      .send-row {
+        display: flex;
+        gap: 6px;
+      }
+
+      input,
+      textarea {
+        padding: 6px 8px;
+        border: 1px solid #d0d5dd;
+        border-radius: 7px;
+        font: inherit;
+        width: 100%;
+      }
+
+      button {
+        border: 1px solid #d0d5dd;
+        border-radius: 7px;
+        background: #fff;
+        color: #202124;
+        font: inherit;
+        cursor: pointer;
+        padding: 6px 10px;
+        white-space: nowrap;
+      }
+
+      button.primary {
+        background: #202124;
+        border-color: #202124;
+        color: #fff;
+      }
+
+      button:disabled {
+        opacity: 0.6;
+        cursor: default;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="title">AI와 대화</div>
+    <div class="help">설정 &gt; AI 탭에서 AI를 켜고 API 키를 넣어야 사용할 수 있어요.</div>
+    <div id="messages" class="messages">
+      <div class="empty-hint">메시지를 입력해서 대화를 시작하세요.</div>
+    </div>
+    <div class="send-row">
+      <input id="messageInput" type="text" placeholder="메시지를 입력하세요" />
+      <button id="sendButton" class="primary" type="button">보내기</button>
+    </div>
+
+    <script>
+      const messages = document.getElementById("messages");
+      const messageInput = document.getElementById("messageInput");
+      const sendButton = document.getElementById("sendButton");
+
+      let history = [];
+
+      function escapeHtml(text) {
+        return String(text)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+      }
+
+      function clearEmptyHint() {
+        const hint = messages.querySelector(".empty-hint");
+        if (hint) {
+          hint.remove();
+        }
+      }
+
+      function appendMessage(role, text) {
+        clearEmptyHint();
+        const bubble = document.createElement("div");
+        bubble.className = `msg ${role}`;
+        bubble.innerHTML = escapeHtml(text);
+        messages.appendChild(bubble);
+        messages.scrollTop = messages.scrollHeight;
+        return bubble;
+      }
+
+      async function submitMessage() {
+        const text = messageInput.value.trim();
+        if (!text) {
+          return;
+        }
+
+        messageInput.value = "";
+        messageInput.disabled = true;
+        sendButton.disabled = true;
+
+        appendMessage("user", text);
+        const pending = appendMessage("assistant", "생각하는 중...");
+
+        try {
+          const { reply } = await window.desktopPet.sendChatMessage(text, history);
+          pending.textContent = reply || "(빈 응답)";
+          history = [...history, { role: "user", content: text }, { role: "assistant", content: reply || "" }].slice(-20);
+        } catch (error) {
+          pending.remove();
+          appendMessage("error", `오류: ${error.message || "AI 설정을 확인해 주세요."}`);
+        } finally {
+          messageInput.disabled = false;
+          sendButton.disabled = false;
+          messageInput.focus();
+        }
+      }
+
+      sendButton.addEventListener("click", submitMessage);
+      messageInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter") {
+          submitMessage();
+        }
+      });
+
+      messageInput.focus();
+    </script>
+  </body>
+</html>
