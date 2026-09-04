@@ -69,6 +69,43 @@
         transform: translateY(0);
       }
 
+      .action-menu {
+        position: absolute;
+        z-index: 6;
+        left: 18px;
+        top: 8px;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        opacity: 0;
+        transform: translateY(4px);
+        transition: 160ms ease;
+        pointer-events: none;
+      }
+
+      .action-menu.show {
+        opacity: 1;
+        transform: translateY(0);
+        pointer-events: auto;
+      }
+
+      .action-bubble {
+        max-width: 206px;
+        padding: 7px 10px;
+        border: none;
+        border-radius: 8px;
+        background: white;
+        color: #222;
+        font: 13px/1.3 system-ui, sans-serif;
+        text-align: left;
+        box-shadow: 0 4px 18px rgba(0, 0, 0, 0.18);
+        cursor: pointer;
+      }
+
+      .action-bubble:hover {
+        background: #f2f2f2;
+      }
+
       .settings-panel {
         position: absolute;
         inset: 12px;
@@ -296,6 +333,11 @@
   </head>
   <body>
     <div id="bubble" class="bubble">안녕!</div>
+    <div id="actionMenu" class="action-menu">
+      <button id="actionToday" class="action-bubble" type="button">📋 오늘 할일 보기</button>
+      <button id="actionCapture" class="action-bubble" type="button">🖼️ 화면 캡처 AI 도움</button>
+      <button id="actionChat" class="action-bubble" type="button">💬 AI와 대화</button>
+    </div>
     <div id="pet" class="pet" title="drag or click"></div>
 
     <section id="settingsPanel" class="settings-panel" aria-hidden="true">
@@ -405,6 +447,10 @@
     <script>
       const pet = document.getElementById("pet");
       const bubble = document.getElementById("bubble");
+      const actionMenu = document.getElementById("actionMenu");
+      const actionToday = document.getElementById("actionToday");
+      const actionCapture = document.getElementById("actionCapture");
+      const actionChat = document.getElementById("actionChat");
       const settingsPanel = document.getElementById("settingsPanel");
       const closeSettings = document.getElementById("closeSettings");
       const previewSettings = document.getElementById("previewSettings");
@@ -471,6 +517,14 @@
         bubble.classList.add("show");
         window.clearTimeout(window.hideBubbleTimer);
         window.hideBubbleTimer = window.setTimeout(() => bubble.classList.remove("show"), duration);
+      }
+
+      function closeActionMenu() {
+        actionMenu.classList.remove("show");
+      }
+
+      function toggleActionMenu() {
+        actionMenu.classList.toggle("show");
       }
 
       async function renderPet() {
@@ -573,6 +627,7 @@
       }
 
       function openTodayWidgetPanel() {
+        closeActionMenu();
         renderTodayWidget();
         todayWidget.classList.add("open");
         todayWidget.setAttribute("aria-hidden", "false");
@@ -744,6 +799,7 @@
       }
 
       function openSettingsPanel() {
+        closeActionMenu();
         fillSettingsForm();
         renderScheduleList();
         settingsPanel.classList.add("open");
@@ -898,8 +954,30 @@
         window.desktopPet.endDrag();
 
         if (!dragged) {
-          showBubbleMessage(summarizeTodaySchedule(), settings.alarmDurationMs);
+          toggleActionMenu();
         }
+      });
+
+      actionToday.addEventListener("click", () => {
+        closeActionMenu();
+        showBubbleMessage(summarizeTodaySchedule(), settings.alarmDurationMs);
+      });
+
+      actionCapture.addEventListener("click", async () => {
+        closeActionMenu();
+        showBubbleMessage("화면을 분석하고 있어요...", 30000);
+
+        try {
+          const { reply } = await window.desktopPet.captureScreenHelp();
+          showBubbleMessage(escapeHtml(reply || "분석 결과가 없어요."), settings.alarmDurationMs);
+        } catch (error) {
+          showBubbleMessage(`캡처 도움 실패: ${escapeHtml(error.message || "AI 설정을 확인해 주세요.")}`, settings.alarmDurationMs);
+        }
+      });
+
+      actionChat.addEventListener("click", () => {
+        closeActionMenu();
+        window.desktopPet.openAiChat();
       });
 
       pet.addEventListener("mousedown", (event) => {
