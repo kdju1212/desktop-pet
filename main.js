@@ -11,6 +11,7 @@ let petWin = null;
 let calendarWin = null;
 let dailyWin = null;
 let aiChatWin = null;
+let updateReady = false;
 
 const defaultSettings = {
   bubbleDurationMs: 1200,
@@ -446,6 +447,7 @@ function setupAutoUpdater() {
   autoUpdater.autoInstallOnAppQuit = true;
 
   autoUpdater.on("update-downloaded", () => {
+    updateReady = true;
     if (petWin && !petWin.isDestroyed()) {
       petWin.webContents.send("desktop-pet-update-ready");
     }
@@ -464,6 +466,16 @@ function setupAutoUpdater() {
       console.error("Auto-update check failed:", err.message);
     });
   }, 60 * 60 * 1000);
+}
+
+function restartApp() {
+  if (updateReady) {
+    autoUpdater.quitAndInstall();
+    return;
+  }
+
+  app.relaunch();
+  app.quit();
 }
 
 function createWindow() {
@@ -512,6 +524,7 @@ function createWindow() {
         click: (item) => win.setAlwaysOnTop(item.checked, "screen-saver")
       },
       { type: "separator" },
+      { label: "재시작", click: () => restartApp() },
       { label: "종료", click: () => app.quit() }
     ]);
 
