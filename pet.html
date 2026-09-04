@@ -818,6 +818,9 @@
       window.desktopPet.onScheduleUpdated(applySchedule);
       window.desktopPet.onSettingsPanelOpen(openSettingsPanel);
       window.desktopPet.onTodayWidgetOpen(openTodayWidgetPanel);
+      window.desktopPet.onUpdateReady(() => {
+        showBubbleMessage("업데이트가 준비됐어요. 앱을 재시작하면 적용됩니다.", settings.alarmDurationMs);
+      });
       window.setInterval(checkAlarms, 1000);
 
       closeTodayWidgetButton.addEventListener("click", closeTodayWidgetPanel);

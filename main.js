@@ -1,6 +1,7 @@
 const path = require("path");
 const fs = require("fs");
 const { app, BrowserWindow, Menu, ipcMain, desktopCapturer, screen } = require("electron");
+const { autoUpdater } = require("electron-updater");
 
 const dragOffsets = new Map();
 const settingsPath = path.join(__dirname, "settings.json");
@@ -436,6 +437,35 @@ function openAiChat() {
   });
 }
 
+function setupAutoUpdater() {
+  if (!app.isPackaged) {
+    return;
+  }
+
+  autoUpdater.autoDownload = true;
+  autoUpdater.autoInstallOnAppQuit = true;
+
+  autoUpdater.on("update-downloaded", () => {
+    if (petWin && !petWin.isDestroyed()) {
+      petWin.webContents.send("desktop-pet-update-ready");
+    }
+  });
+
+  autoUpdater.on("error", (err) => {
+    console.error("Auto-update failed:", err.message);
+  });
+
+  autoUpdater.checkForUpdates().catch((err) => {
+    console.error("Auto-update check failed:", err.message);
+  });
+
+  setInterval(() => {
+    autoUpdater.checkForUpdates().catch((err) => {
+      console.error("Auto-update check failed:", err.message);
+    });
+  }, 60 * 60 * 1000);
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 240,
@@ -491,6 +521,7 @@ function createWindow() {
 
 app.whenReady().then(() => {
   createWindow();
+  setupAutoUpdater();
   ensureDailyTodosForToday();
   setInterval(ensureDailyTodosForToday, 5 * 60 * 1000);
 
