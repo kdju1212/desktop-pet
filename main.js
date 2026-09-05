@@ -555,6 +555,29 @@ function openAiChat() {
   });
 }
 
+function pushChatMessage(role, text) {
+  if (aiChatWin && !aiChatWin.isDestroyed()) {
+    aiChatWin.webContents.send("chat-message-append", { role, text });
+  }
+}
+
+function openAiChatAndAppend(entries) {
+  const wasOpen = Boolean(aiChatWin && !aiChatWin.isDestroyed());
+  openAiChat();
+
+  if (wasOpen) {
+    for (const entry of entries) {
+      pushChatMessage(entry.role, entry.text);
+    }
+  } else {
+    aiChatWin.webContents.once("did-finish-load", () => {
+      for (const entry of entries) {
+        pushChatMessage(entry.role, entry.text);
+      }
+    });
+  }
+}
+
 function setupAutoUpdater() {
   if (!app.isPackaged) {
     return;
@@ -912,6 +935,11 @@ ipcMain.handle("ai-capture-help", async () => {
         { type: "image_url", image_url: { url: imageDataUrl } }
       ]
     }
+  ]);
+
+  openAiChatAndAppend([
+    { role: "user", text: "[화면 캡처 AI 도움] 지금 화면을 캡처해서 분석해줘." },
+    { role: "assistant", text: reply }
   ]);
 
   return { reply };

@@ -190,6 +190,13 @@
         }
       });
 
+      window.desktopPet.onChatMessage(({ role, text }) => {
+        appendMessage(role, text);
+        if (role === "user" || role === "assistant") {
+          history = [...history, { role, content: text || "" }].slice(-20);
+        }
+      });
+
       messageInput.focus();
     </script>
   </body>
