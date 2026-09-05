@@ -9,20 +9,12 @@ const CORS_HEADERS = {
 // Update this list (and redeploy) as providers change their free-tier model lineups.
 const AI_PROVIDERS = [
   {
-    id: "nvidia",
-    label: "NVIDIA API 카탈로그",
-    signupUrl: "https://build.nvidia.com",
-    endpoint: "https://integrate.api.nvidia.com/v1/chat/completions",
-    models: [
-      "meta/llama-3.3-70b-instruct",
-      "mistralai/mixtral-8x22b-instruct-v0.1",
-      "meta/llama-3.1-8b-instruct"
-    ],
-    visionModels: [
-      "meta/llama-3.2-90b-vision-instruct",
-      "microsoft/phi-3.5-vision-instruct",
-      "meta/llama-3.2-11b-vision-instruct"
-    ]
+    id: "groq",
+    label: "Groq (무료 티어)",
+    signupUrl: "https://console.groq.com/keys",
+    endpoint: "https://api.groq.com/openai/v1/chat/completions",
+    models: ["openai/gpt-oss-120b", "openai/gpt-oss-20b", "qwen/qwen3.6-27b"],
+    visionModels: ["qwen/qwen3.6-27b"]
   }
 ];
 
