@@ -228,34 +228,23 @@
       </label>
 
       <div class="settings-help" style="font-weight: 600; color: #202124;">AI 서비스 키 입력 (쉬운 설정)</div>
-      <div class="settings-help">아래 서비스 중 하나에 가입해서 키만 붙여넣으면 됩니다. 여러 개 넣으면 하나가 안 될 때 자동으로 다음 걸로 넘어갑니다. 엔드포인트/모델 이름은 몰라도 됩니다.</div>
+      <div class="settings-help">아래 서비스 중 하나에 가입해서 키만 붙여넣으면 됩니다. 여러 개 넣으면 하나가 안 될 때 자동으로 다음 걸로 넘어갑니다. 엔드포인트/모델 이름은 몰라도 되고, Gemini처럼 화면 인식이 가능한 서비스는 같은 키로 화면 캡처 AI 도움도 자동으로 됩니다.</div>
       <div id="providerList"></div>
 
       <details style="margin-top: 8px;">
         <summary class="settings-help" style="cursor: pointer;">직접 입력 (고급, 선택 사항)</summary>
         <label class="settings-label">API 키 <input id="aiApiKey" type="password" placeholder="sk-..." /></label>
         <label class="settings-label">모델 <input id="aiModel" type="text" placeholder="gpt-4o-mini" /></label>
+        <label class="settings-label">
+          Vision 모델 (화면 캡처 AI용, 선택 사항)
+          <input id="aiVisionModel" type="text" placeholder="예: gemini-2.0-flash" />
+        </label>
         <label class="settings-label">엔드포인트 <input id="aiEndpoint" type="text" /></label>
         <label class="settings-label">
           예비 엔드포인트 (기본이 실패하거나 한도 초과 시 순서대로 자동 시도)
-          <textarea id="aiFallbacks" placeholder="엔드포인트|모델|API키 (한 줄에 하나씩, 우선순위 순서)"></textarea>
+          <textarea id="aiFallbacks" placeholder="엔드포인트|모델|API키|Vision모델(선택) (한 줄에 하나씩, 우선순위 순서)"></textarea>
         </label>
-
-        <label class="settings-label" style="margin-top: 8px;">
-          화면 캡처(Vision) AI 별도 사용
-          <select id="visionEnabled">
-            <option value="false">끄기 (위 텍스트 AI 설정을 그대로 사용)</option>
-            <option value="true">켜기 (아래 설정을 캡처 도움에만 사용)</option>
-          </select>
-        </label>
-        <label class="settings-label">Vision API 키 <input id="visionApiKey" type="password" placeholder="sk-..." /></label>
-        <label class="settings-label">Vision 모델 <input id="visionModel" type="text" placeholder="gemini-2.0-flash" /></label>
-        <label class="settings-label">Vision 엔드포인트 <input id="visionEndpoint" type="text" /></label>
-        <label class="settings-label">
-          Vision 예비 엔드포인트
-          <textarea id="visionFallbacks" placeholder="엔드포인트|모델|API키 (한 줄에 하나씩, 우선순위 순서)"></textarea>
-        </label>
-        <div class="settings-help">화면 캡처 AI 도움은 이미지를 인식할 수 있는(Vision) 모델이 필요합니다. 텍스트 AI 모델이 Vision을 지원하지 않으면 이 설정을 켜서 별도 엔드포인트/모델을 지정하세요. 같은 API 키를 쓰고 모델 이름만 다르게 넣어도 됩니다.</div>
+        <div class="settings-help">화면 캡처 AI 도움은 이미지를 인식할 수 있는(Vision) 모델이 필요합니다. 같은 API 키/엔드포인트로 Vision을 지원하는 모델 이름이 있다면 위 "Vision 모델"에 적어두세요 — 별도의 키 없이 화면 캡처 도움에 그 모델이 자동으로 쓰입니다.</div>
       </details>
 
       <div class="settings-help">API 키는 OS 자격 증명 저장소로 암호화되어 settings.json에 저장됩니다. 혼자 쓰는 앱 기준으로만 사용하세요.</div>
@@ -301,13 +290,9 @@
       const aiEnabled = document.getElementById("aiEnabled");
       const aiApiKey = document.getElementById("aiApiKey");
       const aiModel = document.getElementById("aiModel");
+      const aiVisionModel = document.getElementById("aiVisionModel");
       const aiEndpoint = document.getElementById("aiEndpoint");
       const aiFallbacks = document.getElementById("aiFallbacks");
-      const visionEnabled = document.getElementById("visionEnabled");
-      const visionApiKey = document.getElementById("visionApiKey");
-      const visionModel = document.getElementById("visionModel");
-      const visionEndpoint = document.getElementById("visionEndpoint");
-      const visionFallbacks = document.getElementById("visionFallbacks");
       const providerList = document.getElementById("providerList");
       const syncEnabled = document.getElementById("syncEnabled");
       const syncApiUrl = document.getElementById("syncApiUrl");
@@ -327,14 +312,8 @@
           apiKey: "",
           endpoint: "https://api.openai.com/v1/chat/completions",
           model: "gpt-4o-mini",
-          fallbacks: [],
-          vision: {
-            enabled: false,
-            apiKey: "",
-            endpoint: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-            model: "gemini-2.0-flash",
-            fallbacks: []
-          }
+          visionModel: "",
+          fallbacks: []
         },
         sync: { enabled: false, apiUrl: "", apiToken: "" },
         alarms: []
@@ -363,14 +342,16 @@
           .map((line) => line.trim())
           .filter(Boolean)
           .map((line) => {
-            const [endpoint, model, apiKey] = line.split("|").map((part) => (part || "").trim());
-            return { endpoint: endpoint || "", model: model || "", apiKey: apiKey || "" };
+            const [endpoint, model, apiKey, visionModel] = line.split("|").map((part) => (part || "").trim());
+            return { endpoint: endpoint || "", model: model || "", apiKey: apiKey || "", visionModel: visionModel || "" };
           })
           .filter((config) => config.endpoint && config.apiKey);
       }
 
       function serializeFallbacks(fallbacks) {
-        return (fallbacks || []).map((config) => `${config.endpoint}|${config.model}|${config.apiKey}`).join("\n");
+        return (fallbacks || [])
+          .map((config) => `${config.endpoint}|${config.model}|${config.apiKey}|${config.visionModel || ""}`)
+          .join("\n");
       }
 
       const PROVIDER_CATALOG_URL = "https://desktop-pet-backend.djkim0509.workers.dev/ai-providers";
@@ -449,9 +430,13 @@
           if (!key) {
             continue;
           }
-          for (const model of provider.models) {
-            list.push({ endpoint: provider.endpoint, model, apiKey: key });
-          }
+          provider.models.forEach((model, index) => {
+            const entry = { endpoint: provider.endpoint, model, apiKey: key, visionModel: "" };
+            if (index === 0 && Array.isArray(provider.visionModels) && provider.visionModels.length) {
+              entry.visionModel = provider.visionModels[0];
+            }
+            list.push(entry);
+          });
         }
         return list;
       }
@@ -466,13 +451,9 @@
         aiEnabled.value = settings.ai.enabled ? "true" : "false";
         aiApiKey.value = settings.ai.apiKey || "";
         aiModel.value = settings.ai.model || "gpt-4o-mini";
+        aiVisionModel.value = settings.ai.visionModel || "";
         aiEndpoint.value = settings.ai.endpoint || "https://api.openai.com/v1/chat/completions";
         aiFallbacks.value = serializeFallbacks(settings.ai.fallbacks);
-        visionEnabled.value = settings.ai.vision.enabled ? "true" : "false";
-        visionApiKey.value = settings.ai.vision.apiKey || "";
-        visionModel.value = settings.ai.vision.model || "gemini-2.0-flash";
-        visionEndpoint.value = settings.ai.vision.endpoint || "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
-        visionFallbacks.value = serializeFallbacks(settings.ai.vision.fallbacks);
         syncEnabled.value = settings.sync.enabled ? "true" : "false";
         syncApiUrl.value = settings.sync.apiUrl || "";
         syncApiToken.value = settings.sync.apiToken || "";
@@ -497,16 +478,9 @@
             enabled: aiEnabled.value === "true",
             apiKey: aiApiKey.value,
             model: aiModel.value || "gpt-4o-mini",
+            visionModel: aiVisionModel.value.trim(),
             endpoint: aiEndpoint.value || "https://api.openai.com/v1/chat/completions",
-            fallbacks: [...parseFallbacks(aiFallbacks.value), ...providerFallbacks()],
-            vision: {
-              ...settings.ai.vision,
-              enabled: visionEnabled.value === "true",
-              apiKey: visionApiKey.value,
-              model: visionModel.value || "gemini-2.0-flash",
-              endpoint: visionEndpoint.value || "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-              fallbacks: parseFallbacks(visionFallbacks.value)
-            }
+            fallbacks: [...parseFallbacks(aiFallbacks.value), ...providerFallbacks()]
           },
           sync: {
             ...settings.sync,
