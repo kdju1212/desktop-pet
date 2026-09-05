@@ -46,12 +46,6 @@ contextBridge.exposeInMainWorld("desktopPet", {
   onScheduleUpdated(callback) {
     ipcRenderer.on("desktop-pet-schedule", (_event, schedule) => callback(schedule));
   },
-  onSettingsPanelOpen(callback) {
-    ipcRenderer.on("settings-panel-open", callback);
-  },
-  closeSettingsPanel() {
-    ipcRenderer.send("settings-panel-close");
-  },
   openTodayWidget() {
     ipcRenderer.send("today-widget-open-request");
   },
