@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>펫 설정</title>
+    <style>
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        font: 13px/1.4 system-ui, sans-serif;
+        color: #202124;
+        background: #fff;
+      }
+
+      body {
+        display: flex;
+        flex-direction: column;
+        padding: 16px;
+        gap: 10px;
+      }
+
+      .app-version {
+        color: #9aa0a6;
+        font-size: 11px;
+      }
+
+      .title {
+        font-size: 15px;
+        font-weight: 700;
+      }
+
+      .tabs {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 6px;
+      }
+
+      .tab-button {
+        min-width: 0;
+        padding: 7px 4px;
+        font-size: 12px;
+        border: 1px solid #d0d5dd;
+        border-radius: 7px;
+        background: #fff;
+        color: #202124;
+        font-family: inherit;
+        cursor: pointer;
+      }
+
+      .tab-button.active {
+        background: #202124;
+        border-color: #202124;
+        color: #fff;
+      }
+
+      .tab-panel {
+        flex: 1;
+        min-height: 0;
+        display: none;
+        flex-direction: column;
+        gap: 9px;
+        overflow: auto;
+        padding-right: 2px;
+      }
+
+      .tab-panel.active {
+        display: flex;
+      }
+
+      .settings-label {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-weight: 600;
+      }
+
+      .settings-label input,
+      .settings-label select,
+      .settings-label textarea {
+        min-height: 30px;
+        padding: 5px 7px;
+        border: 1px solid #d0d5dd;
+        border-radius: 7px;
+        font: inherit;
+      }
+
+      .settings-label textarea {
+        min-height: 64px;
+        resize: vertical;
+      }
+
+      .settings-help {
+        color: #5f6368;
+        font-size: 12px;
+      }
+
+      .row-actions,
+      .settings-actions {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .settings-actions {
+        justify-content: flex-end;
+        margin-top: auto;
+      }
+
+      .inline-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+
+      .schedule-list {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        max-height: 140px;
+        overflow: auto;
+        border-top: 1px solid #eaecf0;
+        padding-top: 8px;
+      }
+
+      .schedule-item {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: 6px;
+        align-items: center;
+      }
+
+      button {
+        border: 1px solid #d0d5dd;
+        border-radius: 7px;
+        background: #fff;
+        color: #202124;
+        font: inherit;
+        cursor: pointer;
+        padding: 6px 10px;
+      }
+
+      button.primary {
+        background: #202124;
+        border-color: #202124;
+        color: #fff;
+      }
+
+      button.danger {
+        color: #b42318;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="appVersion" class="app-version"></div>
+    <div class="title">펫 설정</div>
+
+    <div class="tabs">
+      <button class="tab-button active" type="button" data-tab="character">캐릭터</button>
+      <button class="tab-button" type="button" data-tab="bubble">말풍선</button>
+      <button class="tab-button" type="button" data-tab="schedule">할일</button>
+      <button class="tab-button" type="button" data-tab="ai">AI</button>
+      <button class="tab-button" type="button" data-tab="sync">동기화</button>
+    </div>
+
+    <div id="characterTab" class="tab-panel active">
+      <label class="settings-label">
+        표시 방식
+        <select id="petType">
+          <option value="emoji">이모티콘</option>
+          <option value="image">이미지/GIF</option>
+          <option value="external">외부 div</option>
+        </select>
+      </label>
+      <label class="settings-label">이모티콘 <input id="petEmoji" type="text" maxlength="8" /></label>
+      <label class="settings-label">이미지/GIF 파일명 <input id="petImage" type="text" placeholder="pet.gif" /></label>
+      <label class="settings-label">외부 HTML 파일명 <input id="petExternal" type="text" placeholder="external-pet.html" /></label>
+      <div class="settings-help">이미지나 HTML 파일은 이 앱 폴더 안에 넣어두면 됩니다.</div>
+    </div>
+
+    <div id="bubbleTab" class="tab-panel">
+      <label class="settings-label">클릭 말풍선 시간(ms) <input id="bubbleDuration" type="number" min="300" step="100" /></label>
+      <label class="settings-label">알람 말풍선 시간(ms) <input id="alarmDuration" type="number" min="500" step="100" /></label>
+      <div class="settings-help">1000ms가 1초입니다. 예: 3000은 3초.</div>
+    </div>
+
+    <div id="scheduleTab" class="tab-panel">
+      <div class="inline-grid">
+        <label class="settings-label">날짜 <input id="scheduleDate" type="date" /></label>
+        <label class="settings-label">시간 <input id="scheduleTime" type="time" /></label>
+      </div>
+      <label class="settings-label">제목 <input id="scheduleTitle" type="text" placeholder="회의, 약속, 할 일" /></label>
+      <label class="settings-label">메모 <input id="scheduleMemo" type="text" placeholder="선택 사항" /></label>
+      <div class="row-actions">
+        <button id="addSchedule" class="primary" type="button">할일 등록</button>
+      </div>
+      <label class="settings-label">
+        AI로 할일 조율
+        <textarea id="aiScheduleText" placeholder="예: 내일 오후 3시에 병원 예약 / 병원 예약 4시로 옮겨줘 / 병원 예약 취소해줘"></textarea>
+      </label>
+      <button id="addScheduleAi" type="button">AI로 처리</button>
+      <div id="scheduleStatus" class="settings-help"></div>
+      <div id="scheduleList" class="schedule-list"></div>
+    </div>
+
+    <div id="aiTab" class="tab-panel">
+      <label class="settings-label">
+        AI 사용
+        <select id="aiEnabled">
+          <option value="false">끄기</option>
+          <option value="true">켜기</option>
+        </select>
+      </label>
+      <label class="settings-label">API 키 <input id="aiApiKey" type="password" placeholder="sk-..." /></label>
+      <label class="settings-label">모델 <input id="aiModel" type="text" placeholder="gpt-4o-mini" /></label>
+      <label class="settings-label">엔드포인트 <input id="aiEndpoint" type="text" /></label>
+      <div class="settings-help">API 키는 OS 자격 증명 저장소로 암호화되어 settings.json에 저장됩니다. 혼자 쓰는 앱 기준으로만 사용하세요.</div>
+    </div>
+
+    <div id="syncTab" class="tab-panel">
+      <label class="settings-label">
+        동기화 사용
+        <select id="syncEnabled">
+          <option value="false">끄기 (로컬 파일만 사용)</option>
+          <option value="true">켜기 (폰 앱과 동기화)</option>
+        </select>
+      </label>
+      <label class="settings-label">서버 주소 <input id="syncApiUrl" type="text" placeholder="https://desktop-pet-backend.xxx.workers.dev" /></label>
+      <label class="settings-label">API 토큰 <input id="syncApiToken" type="password" placeholder="토큰 붙여넣기" /></label>
+      <button id="testSyncButton" type="button">연결 테스트</button>
+      <div id="syncStatus" class="settings-help"></div>
+      <div class="settings-help">켜면 할일/데일리 할일이 이 서버에 저장되고, 로컬 schedule.json은 더 이상 쓰이지 않습니다. 폰 PWA랑 같은 서버 주소/토큰을 쓰면 서로 동기화됩니다.</div>
+    </div>
+
+    <div class="settings-actions">
+      <div id="saveStatus" class="settings-help"></div>
+      <button id="saveSettings" class="primary" type="button">저장</button>
+    </div>
+
+    <script>
+      const appVersion = document.getElementById("appVersion");
+      const petType = document.getElementById("petType");
+      const petEmoji = document.getElementById("petEmoji");
+      const petImage = document.getElementById("petImage");
+      const petExternal = document.getElementById("petExternal");
+      const bubbleDuration = document.getElementById("bubbleDuration");
+      const alarmDuration = document.getElementById("alarmDuration");
+      const scheduleDate = document.getElementById("scheduleDate");
+      const scheduleTime = document.getElementById("scheduleTime");
+      const scheduleTitle = document.getElementById("scheduleTitle");
+      const scheduleMemo = document.getElementById("scheduleMemo");
+      const addSchedule = document.getElementById("addSchedule");
+      const aiScheduleText = document.getElementById("aiScheduleText");
+      const addScheduleAi = document.getElementById("addScheduleAi");
+      const scheduleStatus = document.getElementById("scheduleStatus");
+      const scheduleList = document.getElementById("scheduleList");
+      const aiEnabled = document.getElementById("aiEnabled");
+      const aiApiKey = document.getElementById("aiApiKey");
+      const aiModel = document.getElementById("aiModel");
+      const aiEndpoint = document.getElementById("aiEndpoint");
+      const syncEnabled = document.getElementById("syncEnabled");
+      const syncApiUrl = document.getElementById("syncApiUrl");
+      const syncApiToken = document.getElementById("syncApiToken");
+      const testSyncButton = document.getElementById("testSyncButton");
+      const syncStatus = document.getElementById("syncStatus");
+      const saveSettings = document.getElementById("saveSettings");
+      const saveStatus = document.getElementById("saveStatus");
+
+      let schedule = [];
+      let settings = {
+        bubbleDurationMs: 1200,
+        alarmDurationMs: 6000,
+        pet: { type: "emoji", emoji: "🙂", image: "pet.gif", externalHtmlFile: "external-pet.html" },
+        ai: { enabled: false, apiKey: "", endpoint: "https://api.openai.com/v1/chat/completions", model: "gpt-4o-mini" },
+        sync: { enabled: false, apiUrl: "", apiToken: "" },
+        alarms: []
+      };
+
+      function localDate() {
+        const now = new Date();
+        return [now.getFullYear(), String(now.getMonth() + 1).padStart(2, "0"), String(now.getDate()).padStart(2, "0")].join("-");
+      }
+
+      function escapeHtml(text) {
+        return String(text)
+          .replace(/&/g, "&amp;")
+          .replace(/</g, "&lt;")
+          .replace(/>/g, "&gt;");
+      }
+
+      function showStatus(el, message, color = "") {
+        el.textContent = message;
+        el.style.color = color;
+      }
+
+      function fillSettingsForm() {
+        petType.value = settings.pet.type || "emoji";
+        petEmoji.value = settings.pet.emoji || "🙂";
+        petImage.value = settings.pet.image || "pet.gif";
+        petExternal.value = settings.pet.externalHtmlFile || "external-pet.html";
+        bubbleDuration.value = settings.bubbleDurationMs || 1200;
+        alarmDuration.value = settings.alarmDurationMs || 6000;
+        aiEnabled.value = settings.ai.enabled ? "true" : "false";
+        aiApiKey.value = settings.ai.apiKey || "";
+        aiModel.value = settings.ai.model || "gpt-4o-mini";
+        aiEndpoint.value = settings.ai.endpoint || "https://api.openai.com/v1/chat/completions";
+        syncEnabled.value = settings.sync.enabled ? "true" : "false";
+        syncApiUrl.value = settings.sync.apiUrl || "";
+        syncApiToken.value = settings.sync.apiToken || "";
+        scheduleDate.value = scheduleDate.value || localDate();
+      }
+
+      function collectSettingsForm() {
+        return {
+          ...settings,
+          bubbleDurationMs: Number(bubbleDuration.value) || 1200,
+          alarmDurationMs: Number(alarmDuration.value) || 6000,
+          pet: {
+            ...settings.pet,
+            type: petType.value,
+            emoji: petEmoji.value || "🙂",
+            image: petImage.value || "pet.gif",
+            externalHtmlFile: petExternal.value || "external-pet.html"
+          },
+          ai: {
+            ...settings.ai,
+            enabled: aiEnabled.value === "true",
+            apiKey: aiApiKey.value,
+            model: aiModel.value || "gpt-4o-mini",
+            endpoint: aiEndpoint.value || "https://api.openai.com/v1/chat/completions"
+          },
+          sync: {
+            ...settings.sync,
+            enabled: syncEnabled.value === "true",
+            apiUrl: syncApiUrl.value.trim(),
+            apiToken: syncApiToken.value.trim()
+          }
+        };
+      }
+
+      function renderScheduleList() {
+        scheduleList.innerHTML = "";
+        const upcoming = [...schedule]
+          .sort((a, b) => `${a.date} ${a.time || "99:99"}`.localeCompare(`${b.date} ${b.time || "99:99"}`))
+          .slice(0, 10);
+
+        if (!upcoming.length) {
+          scheduleList.textContent = "등록된 할일이 없습니다.";
+          return;
+        }
+
+        for (const item of upcoming) {
+          const row = document.createElement("div");
+          row.className = "schedule-item";
+
+          const done = document.createElement("input");
+          done.type = "checkbox";
+          done.checked = Boolean(item.done);
+          done.addEventListener("change", async () => {
+            item.done = done.checked;
+            await window.desktopPet.updateSchedule({ id: item.id, done: done.checked });
+          });
+
+          const label = document.createElement("span");
+          label.textContent = `${item.date} ${item.time || ""} ${item.title}`;
+          if (item.done) {
+            label.style.textDecoration = "line-through";
+            label.style.color = "#9aa0a6";
+          }
+
+          const textWrap = document.createElement("span");
+          textWrap.appendChild(done);
+          textWrap.appendChild(label);
+
+          const remove = document.createElement("button");
+          remove.className = "danger";
+          remove.type = "button";
+          remove.textContent = "삭제";
+          remove.addEventListener("click", async () => {
+            await window.desktopPet.deleteSchedule(item.id);
+            schedule = schedule.filter((next) => next.id !== item.id);
+            renderScheduleList();
+          });
+          row.appendChild(textWrap);
+          row.appendChild(remove);
+          scheduleList.appendChild(row);
+        }
+      }
+
+      async function applySettings(nextSettings) {
+        settings = {
+          ...settings,
+          ...nextSettings,
+          pet: { ...settings.pet, ...(nextSettings.pet || {}) },
+          ai: { ...settings.ai, ...(nextSettings.ai || {}) },
+          sync: { ...settings.sync, ...(nextSettings.sync || {}) }
+        };
+        fillSettingsForm();
+      }
+
+      function applySchedule(nextSchedule) {
+        schedule = Array.isArray(nextSchedule) ? nextSchedule : [];
+        renderScheduleList();
+      }
+
+      window.desktopPet.readSettings().then(applySettings);
+      window.desktopPet.readSchedule().then(applySchedule);
+      window.desktopPet.getVersion().then((version) => {
+        appVersion.textContent = `v${version}`;
+      });
+      window.desktopPet.onSettingsUpdated(applySettings);
+      window.desktopPet.onScheduleUpdated(applySchedule);
+
+      document.querySelectorAll(".tab-button").forEach((button) => {
+        button.addEventListener("click", () => {
+          document.querySelectorAll(".tab-button").forEach((tab) => tab.classList.toggle("active", tab === button));
+          document.querySelectorAll(".tab-panel").forEach((panel) => panel.classList.toggle("active", panel.id === `${button.dataset.tab}Tab`));
+        });
+      });
+
+      addSchedule.addEventListener("click", async () => {
+        const item = {
+          date: scheduleDate.value || localDate(),
+          time: scheduleTime.value || "",
+          title: scheduleTitle.value || "새 할일",
+          memo: scheduleMemo.value || ""
+        };
+        await window.desktopPet.addSchedule(item);
+        scheduleTitle.value = "";
+        scheduleMemo.value = "";
+        showStatus(scheduleStatus, "할일을 등록했어요.", "#1a7f37");
+      });
+
+      addScheduleAi.addEventListener("click", async () => {
+        try {
+          const text = aiScheduleText.value.trim();
+          if (!text) {
+            showStatus(scheduleStatus, "처리할 할일을 입력해 주세요.", "#b42318");
+            return;
+          }
+
+          const result = await window.desktopPet.addScheduleWithAi(text);
+          aiScheduleText.value = "";
+
+          const actionLabel = { add: "등록", update: "수정", delete: "삭제" }[result.action] || "처리";
+          let message = `할일을 ${actionLabel}했어요: ${result.item.title}`;
+          if (result.conflict) {
+            message += ` (주의: 같은 시간에 "${result.conflict.title}" 할일이 있어요.)`;
+          }
+          showStatus(scheduleStatus, message, "#1a7f37");
+        } catch (error) {
+          showStatus(scheduleStatus, `AI 처리 실패: ${error.message || "설정을 확인해 주세요."}`, "#b42318");
+        }
+      });
+
+      saveSettings.addEventListener("click", async () => {
+        const savedSettings = await window.desktopPet.saveSettings(collectSettingsForm());
+        await applySettings(savedSettings);
+        showStatus(saveStatus, "저장됨", "#1a7f37");
+        window.setTimeout(() => showStatus(saveStatus, ""), 1500);
+      });
+
+      testSyncButton.addEventListener("click", async () => {
+        const url = syncApiUrl.value.trim();
+        const token = syncApiToken.value.trim();
+
+        if (!url || !token) {
+          showStatus(syncStatus, "서버 주소와 토큰을 모두 입력해 주세요.", "#b42318");
+          return;
+        }
+
+        showStatus(syncStatus, "연결 확인 중...");
+
+        try {
+          const response = await fetch(`${url.replace(/\/$/, "")}/todos`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}`);
+          }
+
+          showStatus(syncStatus, "연결 성공! 저장을 눌러 적용하세요.", "#1a7f37");
+        } catch (error) {
+          showStatus(syncStatus, `연결 실패: ${error.message}`, "#b42318");
+        }
+      });
+    </script>
+  </body>
+</html>

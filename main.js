@@ -11,6 +11,7 @@ let petWin = null;
 let calendarWin = null;
 let dailyWin = null;
 let aiChatWin = null;
+let settingsWin = null;
 let updateReady = false;
 
 const defaultSettings = {
@@ -248,7 +249,7 @@ function sendSettings(win) {
 }
 
 function broadcastSettings() {
-  for (const win of [petWin, dailyWin]) {
+  for (const win of [petWin, dailyWin, settingsWin]) {
     if (win && !win.isDestroyed()) {
       sendSettings(win);
     }
@@ -264,7 +265,7 @@ async function broadcastSchedule() {
     return;
   }
 
-  for (const win of [petWin, calendarWin]) {
+  for (const win of [petWin, calendarWin, settingsWin]) {
     if (win && !win.isDestroyed()) {
       win.webContents.send("desktop-pet-schedule", schedule);
     }
@@ -365,14 +366,36 @@ async function captureScreenDataUrl() {
   return sources[0].thumbnail.toDataURL();
 }
 
-function openSettings(win) {
-  win.setSize(420, 560);
-  win.webContents.send("settings-panel-open");
-}
+function openSettings() {
+  if (settingsWin && !settingsWin.isDestroyed()) {
+    settingsWin.focus();
+    return;
+  }
 
-function closeSettings(win) {
-  win.setSize(240, 240);
-  win.webContents.send("settings-panel-close");
+  settingsWin = new BrowserWindow({
+    width: 420,
+    height: 560,
+    minWidth: 360,
+    minHeight: 480,
+    title: "펫 설정",
+    webPreferences: {
+      preload: path.join(__dirname, "preload.js"),
+      nodeIntegration: false,
+      contextIsolation: true
+    }
+  });
+
+  settingsWin.setMenuBarVisibility(false);
+  settingsWin.loadFile("settings.html");
+
+  settingsWin.webContents.on("did-finish-load", () => {
+    sendSettings(settingsWin);
+    broadcastSchedule();
+  });
+
+  settingsWin.on("closed", () => {
+    settingsWin = null;
+  });
 }
 
 function openTodayWidget(win) {
@@ -550,7 +573,7 @@ function createWindow() {
 
   win.webContents.on("context-menu", () => {
     const menu = Menu.buildFromTemplate([
-      { label: "설정 열기", click: () => openSettings(win) },
+      { label: "설정 열기", click: () => openSettings() },
       { label: "할일 캘린더 열기", click: () => openCalendar() },
       { label: "데일리 할일 관리", click: () => openDailyTodos() },
       {
@@ -613,13 +636,6 @@ ipcMain.on("pet-drag-move", (event, mouse) => {
 
 ipcMain.on("pet-drag-end", (event) => {
   dragOffsets.delete(event.sender.id);
-});
-
-ipcMain.on("settings-panel-close", (event) => {
-  const win = BrowserWindow.fromWebContents(event.sender);
-  if (win) {
-    closeSettings(win);
-  }
 });
 
 ipcMain.on("today-widget-open-request", (event) => {
