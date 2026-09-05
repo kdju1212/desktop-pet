@@ -1,7 +1,7 @@
 {
   "name": "desktop-pet-backend",
-  "version": "1.0.0",
-  "description": "Cloudflare Workers + D1 backend for desktop-pet todo sync",
+  "version": "1.1.0",
+  "description": "Cloudflare Workers + D1 backend for desktop-pet todo sync and AI provider catalog",
   "private": true,
   "main": "src/index.js",
   "type": "module",
