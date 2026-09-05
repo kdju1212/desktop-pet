@@ -13,8 +13,16 @@ const AI_PROVIDERS = [
     label: "NVIDIA API 카탈로그",
     signupUrl: "https://build.nvidia.com",
     endpoint: "https://integrate.api.nvidia.com/v1/chat/completions",
-    models: ["meta/llama-3.1-8b-instruct", "meta/llama-3.1-70b-instruct", "meta/llama-3.3-70b-instruct"],
-    visionModels: ["meta/llama-3.2-11b-vision-instruct", "meta/llama-3.2-90b-vision-instruct"]
+    models: [
+      "meta/llama-3.1-8b-instruct",
+      "meta/llama-3.3-70b-instruct",
+      "mistralai/mixtral-8x22b-instruct-v0.1"
+    ],
+    visionModels: [
+      "meta/llama-3.2-11b-vision-instruct",
+      "meta/llama-3.2-90b-vision-instruct",
+      "microsoft/phi-3.5-vision-instruct"
+    ]
   }
 ];
 
