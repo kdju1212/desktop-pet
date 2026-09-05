@@ -1033,6 +1033,20 @@
         window.desktopPet.endDrag();
       });
 
+      document.body.addEventListener("click", (event) => {
+        if (
+          event.target.closest("#pet") ||
+          event.target.closest(".action-bubble") ||
+          event.target.closest(".settings-panel") ||
+          event.target.closest(".today-widget")
+        ) {
+          return;
+        }
+
+        showBubbleMessage(summarizeTodaySchedule(), settings.alarmDurationMs);
+        openActionMenu(settings.alarmDurationMs);
+      });
+
       pet.addEventListener("mousedown", (event) => {
         if (event.button === 1) {
           event.preventDefault();
