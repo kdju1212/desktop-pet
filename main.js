@@ -28,14 +28,8 @@ const defaultSettings = {
     apiKey: "",
     endpoint: "https://api.openai.com/v1/chat/completions",
     model: "gpt-4o-mini",
-    fallbacks: [],
-    vision: {
-      enabled: false,
-      apiKey: "",
-      endpoint: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-      model: "gemini-2.0-flash",
-      fallbacks: []
-    }
+    visionModel: "",
+    fallbacks: []
   },
   sync: {
     enabled: false,
@@ -101,12 +95,7 @@ function writeSettings(settings) {
     ai: {
       ...settings.ai,
       apiKey: encryptSecret(settings.ai.apiKey),
-      fallbacks: encryptFallbacks(settings.ai.fallbacks),
-      vision: {
-        ...settings.ai.vision,
-        apiKey: encryptSecret(settings.ai.vision.apiKey),
-        fallbacks: encryptFallbacks(settings.ai.vision.fallbacks)
-      }
+      fallbacks: encryptFallbacks(settings.ai.fallbacks)
     },
     sync: { ...settings.sync, apiToken: encryptSecret(settings.sync.apiToken) }
   });
@@ -127,11 +116,7 @@ function readSettings() {
     ...defaultSettings,
     ...settings,
     pet: { ...defaultSettings.pet, ...(settings.pet || {}) },
-    ai: {
-      ...defaultSettings.ai,
-      ...(settings.ai || {}),
-      vision: { ...defaultSettings.ai.vision, ...((settings.ai && settings.ai.vision) || {}) }
-    },
+    ai: { ...defaultSettings.ai, ...(settings.ai || {}) },
     sync: { ...defaultSettings.sync, ...(settings.sync || {}) },
     alarms: Array.isArray(settings.alarms) ? settings.alarms : [],
     dailyTodos: Array.isArray(settings.dailyTodos) ? settings.dailyTodos : []
@@ -139,8 +124,6 @@ function readSettings() {
 
   merged.ai.apiKey = decryptSecret(merged.ai.apiKey);
   merged.ai.fallbacks = decryptFallbacks(merged.ai.fallbacks);
-  merged.ai.vision.apiKey = decryptSecret(merged.ai.vision.apiKey);
-  merged.ai.vision.fallbacks = decryptFallbacks(merged.ai.vision.fallbacks);
   merged.sync.apiToken = decryptSecret(merged.sync.apiToken);
 
   return merged;
@@ -365,21 +348,26 @@ async function ensureDailyTodosForToday() {
   }
 }
 
-function textAiConfigs(settings) {
+function allAiConfigs(settings) {
   return [
-    { endpoint: settings.ai.endpoint, model: settings.ai.model, apiKey: settings.ai.apiKey },
+    {
+      endpoint: settings.ai.endpoint,
+      model: settings.ai.model,
+      apiKey: settings.ai.apiKey,
+      visionModel: settings.ai.visionModel || ""
+    },
     ...settings.ai.fallbacks
   ].filter((config) => config.apiKey);
 }
 
+function textAiConfigs(settings) {
+  return allAiConfigs(settings);
+}
+
 function visionAiConfigs(settings) {
-  if (settings.ai.vision.enabled && settings.ai.vision.apiKey) {
-    return [
-      { endpoint: settings.ai.vision.endpoint, model: settings.ai.vision.model, apiKey: settings.ai.vision.apiKey },
-      ...settings.ai.vision.fallbacks
-    ].filter((config) => config.apiKey);
-  }
-  return textAiConfigs(settings);
+  return allAiConfigs(settings)
+    .filter((config) => config.visionModel)
+    .map((config) => ({ endpoint: config.endpoint, apiKey: config.apiKey, model: config.visionModel }));
 }
 
 async function requestAiCompletion(aiConfig, messages) {
@@ -895,10 +883,17 @@ ipcMain.handle("ai-schedule-add", async (event, text) => {
 
 ipcMain.handle("ai-capture-help", async () => {
   const settings = readSettings();
+
+  if (!settings.ai.enabled) {
+    throw new Error("AI가 설정되어 있지 않습니다. 설정 > AI 탭에서 켜주세요.");
+  }
+
   const configs = visionAiConfigs(settings);
 
-  if (!settings.ai.enabled || !configs.length) {
-    throw new Error("AI가 설정되어 있지 않습니다. 설정 > AI 탭에서 켜주세요.");
+  if (!configs.length) {
+    throw new Error(
+      "화면 인식(Vision) 모델이 설정된 API 키가 없습니다. 설정 > AI 탭에서 화면 인식이 가능한 서비스(Gemini 등) 키를 추가하거나, 직접 입력에서 Vision 모델을 지정해주세요."
+    );
   }
 
   const imageDataUrl = await captureScreenDataUrl();
