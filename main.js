@@ -1,6 +1,6 @@
 const path = require("path");
 const fs = require("fs");
-const { app, BrowserWindow, Menu, ipcMain, desktopCapturer, screen } = require("electron");
+const { app, BrowserWindow, Menu, ipcMain, desktopCapturer, screen, safeStorage } = require("electron");
 const { autoUpdater } = require("electron-updater");
 
 const dragOffsets = new Map();
@@ -49,6 +49,37 @@ function writeJson(filePath, data) {
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2), "utf8");
 }
 
+const ENCRYPTED_PREFIX = "enc:";
+
+function encryptSecret(value) {
+  if (!value || !safeStorage.isEncryptionAvailable()) {
+    return value || "";
+  }
+  return ENCRYPTED_PREFIX + safeStorage.encryptString(value).toString("base64");
+}
+
+function decryptSecret(value) {
+  if (typeof value !== "string" || !value.startsWith(ENCRYPTED_PREFIX)) {
+    return value || "";
+  }
+  if (!safeStorage.isEncryptionAvailable()) {
+    return "";
+  }
+  try {
+    return safeStorage.decryptString(Buffer.from(value.slice(ENCRYPTED_PREFIX.length), "base64"));
+  } catch {
+    return "";
+  }
+}
+
+function writeSettings(settings) {
+  writeJson(settingsPath, {
+    ...settings,
+    ai: { ...settings.ai, apiKey: encryptSecret(settings.ai.apiKey) },
+    sync: { ...settings.sync, apiToken: encryptSecret(settings.sync.apiToken) }
+  });
+}
+
 function localDate() {
   const now = new Date();
   return [
@@ -60,7 +91,7 @@ function localDate() {
 
 function readSettings() {
   const settings = readJson(settingsPath, defaultSettings);
-  return {
+  const merged = {
     ...defaultSettings,
     ...settings,
     pet: { ...defaultSettings.pet, ...(settings.pet || {}) },
@@ -69,6 +100,11 @@ function readSettings() {
     alarms: Array.isArray(settings.alarms) ? settings.alarms : [],
     dailyTodos: Array.isArray(settings.dailyTodos) ? settings.dailyTodos : []
   };
+
+  merged.ai.apiKey = decryptSecret(merged.ai.apiKey);
+  merged.sync.apiToken = decryptSecret(merged.sync.apiToken);
+
+  return merged;
 }
 
 function readScheduleLocal() {
@@ -193,7 +229,7 @@ async function createDailyTemplate(input) {
   }
 
   const nextDaily = { id: `${Date.now()}`, title, time };
-  writeJson(settingsPath, { ...settings, dailyTodos: [...settings.dailyTodos, nextDaily] });
+  writeSettings({ ...settings, dailyTodos: [...settings.dailyTodos, nextDaily] });
   return nextDaily;
 }
 
@@ -204,7 +240,7 @@ async function deleteDailyTemplate(id) {
     return;
   }
 
-  writeJson(settingsPath, { ...settings, dailyTodos: settings.dailyTodos.filter((daily) => daily.id !== id) });
+  writeSettings({ ...settings, dailyTodos: settings.dailyTodos.filter((daily) => daily.id !== id) });
 }
 
 function sendSettings(win) {
@@ -615,7 +651,7 @@ ipcMain.handle("settings-save", (event, nextSettings) => {
     dailyTodos: Array.isArray(nextSettings.dailyTodos) ? nextSettings.dailyTodos : currentSettings.dailyTodos
   };
 
-  writeJson(settingsPath, mergedSettings);
+  writeSettings(mergedSettings);
   broadcastSettings();
 
   return mergedSettings;

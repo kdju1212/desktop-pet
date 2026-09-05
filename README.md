@@ -80,7 +80,7 @@ npm.cmd start
 모델: openai/gpt-oss-20b (또는 openai/gpt-oss-120b, qwen/qwen3.6-27b)
 ```
 
-API 키는 이 폴더의 `settings.json`에 평문으로 저장됩니다. 혼자 쓰는 개인 앱 기준으로만 사용하세요. 공개 배포용 앱에서는 키를 앱에 넣지 말고 서버를 따로 두는 방식이 더 안전합니다.
+API 키(및 동기화 API 토큰)는 `settings.json`에 저장하기 전에 OS 자격 증명 저장소(Windows DPAPI 등)로 암호화됩니다(Electron `safeStorage`). 다만 이 PC의 같은 사용자 계정으로 로그인하면 앱이 알아서 복호화하므로, 혼자 쓰는 개인 앱 기준으로만 사용하세요. 공개 배포용 앱에서는 키를 앱에 넣지 말고 서버를 따로 두는 방식이 더 안전합니다.
 
 ## 배포 메모
 
