@@ -80,6 +80,17 @@ npm.cmd start
 
 API 키(및 동기화 API 토큰)는 `settings.json`에 저장하기 전에 OS 자격 증명 저장소(Windows DPAPI 등)로 암호화됩니다(Electron `safeStorage`). 다만 이 PC의 같은 사용자 계정으로 로그인하면 앱이 알아서 복호화하므로, 혼자 쓰는 개인 앱 기준으로만 사용하세요. 공개 배포용 앱에서는 키를 앱에 넣지 말고 서버를 따로 두는 방식이 더 안전합니다.
 
+### 화면 캡처 AI 도움용 Vision 모델 별도 설정
+
+Groq 등 텍스트 전용 모델은 화면 캡처 AI 도움(이미지 인식)에는 쓸 수 없습니다. `AI` 탭 아래쪽 `화면 캡처(Vision) AI 별도 사용`을 켜면, 할일 조율/AI 대화는 위쪽 텍스트 AI 설정을 쓰고 화면 캡처만 별도의 Vision 지원 모델을 쓰도록 나눌 수 있습니다. 같은 API 키를 쓰는 서비스라도 모델 이름만 다르게 넣으면 됩니다(예: Groq나 NVIDIA API 카탈로그에 Vision 모델이 있다면 그걸 모델란에 넣기만 하면 됨). 별도 설정을 꺼두면 지금까지처럼 위쪽 텍스트 AI 설정을 그대로 씁니다.
+
+Vision까지 지원하는 무료 티어 옵션 예시:
+
+```text
+엔드포인트: https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+모델: gemini-2.0-flash (Google AI Studio에서 API 키 발급, OpenAI 호환 형식 지원)
+```
+
 ## 배포 메모
 
 `.exe`로 빌드해서 배포하면 사용자 PC에는 Python이나 Node.js가 필요 없습니다.
