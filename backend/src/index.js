@@ -9,22 +9,6 @@ const CORS_HEADERS = {
 // Update this list (and redeploy) as providers change their free-tier model lineups.
 const AI_PROVIDERS = [
   {
-    id: "groq",
-    label: "Groq (무료 티어)",
-    signupUrl: "https://console.groq.com/keys",
-    endpoint: "https://api.groq.com/openai/v1/chat/completions",
-    models: ["openai/gpt-oss-20b", "openai/gpt-oss-120b", "qwen/qwen3.6-27b"],
-    visionModels: ["meta-llama/llama-4-scout-17b-16e-instruct"]
-  },
-  {
-    id: "gemini",
-    label: "Google Gemini (무료 티어)",
-    signupUrl: "https://aistudio.google.com/apikey",
-    endpoint: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-    models: ["gemini-2.0-flash", "gemini-1.5-flash"],
-    visionModels: ["gemini-2.0-flash", "gemini-1.5-flash"]
-  },
-  {
     id: "nvidia",
     label: "NVIDIA API 카탈로그",
     signupUrl: "https://build.nvidia.com",
