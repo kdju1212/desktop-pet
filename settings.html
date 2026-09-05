@@ -430,12 +430,21 @@
           if (!key) {
             continue;
           }
+          const visionModels = Array.isArray(provider.visionModels) ? provider.visionModels : [];
+
           provider.models.forEach((model, index) => {
             const entry = { endpoint: provider.endpoint, model, apiKey: key, visionModel: "" };
-            if (index === 0 && Array.isArray(provider.visionModels) && provider.visionModels.length) {
-              entry.visionModel = provider.visionModels[0];
+            if (index === 0 && visionModels.length) {
+              entry.visionModel = visionModels[0];
             }
             list.push(entry);
+          });
+
+          // Additional Vision models beyond the first also become their own
+          // fallback entries, so a rate limit on one Vision model can fall
+          // through to the next instead of only ever trying one.
+          visionModels.slice(1).forEach((visionModel) => {
+            list.push({ endpoint: provider.endpoint, model: visionModel, apiKey: key, visionModel });
           });
         }
         return list;
