@@ -91,6 +91,15 @@ Vision까지 지원하는 무료 티어 옵션 예시:
 모델: gemini-2.0-flash (Google AI Studio에서 API 키 발급, OpenAI 호환 형식 지원)
 ```
 
+### 예비(fallback) 엔드포인트
+
+`AI` 탭의 `예비 엔드포인트` 칸에 한 줄에 하나씩 `엔드포인트|모델|API키` 형식으로 적어두면, 기본 엔드포인트 요청이 실패하거나(한도 초과 포함) 에러가 나면 적어둔 순서대로 자동으로 다음 엔드포인트를 시도합니다. 화면 캡처(Vision) AI 쪽에도 별도로 예비 엔드포인트를 설정할 수 있습니다. 전부 다 같은 API 키를 쓰고 모델 이름만 다르게 여러 줄 적어도 됩니다.
+
+```text
+https://api.groq.com/openai/v1/chat/completions|openai/gpt-oss-20b|gsk_...
+https://integrate.api.nvidia.com/v1/chat/completions|meta/llama-3.1-8b-instruct|nvapi-...
+```
+
 ## 배포 메모
 
 `.exe`로 빌드해서 배포하면 사용자 PC에는 Python이나 Node.js가 필요 없습니다.

@@ -28,11 +28,13 @@ const defaultSettings = {
     apiKey: "",
     endpoint: "https://api.openai.com/v1/chat/completions",
     model: "gpt-4o-mini",
+    fallbacks: [],
     vision: {
       enabled: false,
       apiKey: "",
       endpoint: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
-      model: "gemini-2.0-flash"
+      model: "gemini-2.0-flash",
+      fallbacks: []
     }
   },
   sync: {
@@ -79,13 +81,32 @@ function decryptSecret(value) {
   }
 }
 
+function encryptFallbacks(fallbacks) {
+  return (Array.isArray(fallbacks) ? fallbacks : []).map((fallback) => ({
+    ...fallback,
+    apiKey: encryptSecret(fallback.apiKey)
+  }));
+}
+
+function decryptFallbacks(fallbacks) {
+  return (Array.isArray(fallbacks) ? fallbacks : []).map((fallback) => ({
+    ...fallback,
+    apiKey: decryptSecret(fallback.apiKey)
+  }));
+}
+
 function writeSettings(settings) {
   writeJson(settingsPath, {
     ...settings,
     ai: {
       ...settings.ai,
       apiKey: encryptSecret(settings.ai.apiKey),
-      vision: { ...settings.ai.vision, apiKey: encryptSecret(settings.ai.vision.apiKey) }
+      fallbacks: encryptFallbacks(settings.ai.fallbacks),
+      vision: {
+        ...settings.ai.vision,
+        apiKey: encryptSecret(settings.ai.vision.apiKey),
+        fallbacks: encryptFallbacks(settings.ai.vision.fallbacks)
+      }
     },
     sync: { ...settings.sync, apiToken: encryptSecret(settings.sync.apiToken) }
   });
@@ -117,7 +138,9 @@ function readSettings() {
   };
 
   merged.ai.apiKey = decryptSecret(merged.ai.apiKey);
+  merged.ai.fallbacks = decryptFallbacks(merged.ai.fallbacks);
   merged.ai.vision.apiKey = decryptSecret(merged.ai.vision.apiKey);
+  merged.ai.vision.fallbacks = decryptFallbacks(merged.ai.vision.fallbacks);
   merged.sync.apiToken = decryptSecret(merged.sync.apiToken);
 
   return merged;
@@ -342,11 +365,21 @@ async function ensureDailyTodosForToday() {
   }
 }
 
-function resolveVisionAi(settings) {
+function textAiConfigs(settings) {
+  return [
+    { endpoint: settings.ai.endpoint, model: settings.ai.model, apiKey: settings.ai.apiKey },
+    ...settings.ai.fallbacks
+  ].filter((config) => config.apiKey);
+}
+
+function visionAiConfigs(settings) {
   if (settings.ai.vision.enabled && settings.ai.vision.apiKey) {
-    return settings.ai.vision;
+    return [
+      { endpoint: settings.ai.vision.endpoint, model: settings.ai.vision.model, apiKey: settings.ai.vision.apiKey },
+      ...settings.ai.vision.fallbacks
+    ].filter((config) => config.apiKey);
   }
-  return settings.ai;
+  return textAiConfigs(settings);
 }
 
 async function requestAiCompletion(aiConfig, messages) {
@@ -369,6 +402,21 @@ async function requestAiCompletion(aiConfig, messages) {
 
   const data = await response.json();
   return data.choices?.[0]?.message?.content || "";
+}
+
+async function requestAiCompletionWithFallback(configs, messages) {
+  let lastError = new Error("No AI endpoint configured.");
+
+  for (const config of configs) {
+    try {
+      return await requestAiCompletion(config, messages);
+    } catch (err) {
+      lastError = err;
+      console.error(`AI request failed for ${config.endpoint}:`, err.message);
+    }
+  }
+
+  throw lastError;
 }
 
 async function captureScreenDataUrl() {
@@ -764,8 +812,9 @@ ipcMain.handle("external-html-read", (_event, fileName) => {
 
 ipcMain.handle("ai-schedule-add", async (event, text) => {
   const settings = readSettings();
+  const configs = textAiConfigs(settings);
 
-  if (!settings.ai.enabled || !settings.ai.apiKey) {
+  if (!settings.ai.enabled || !configs.length) {
     throw new Error("AI API key is not configured.");
   }
 
@@ -773,38 +822,21 @@ ipcMain.handle("ai-schedule-add", async (event, text) => {
   const schedule = await getScheduleItems();
   const existingItems = schedule.map(({ id, date, time, title }) => ({ id, date, time, title }));
 
-  const response = await fetch(settings.ai.endpoint, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${settings.ai.apiKey}`
+  const raw = await requestAiCompletionWithFallback(configs, [
+    {
+      role: "system",
+      content:
+        "You manage a Korean-language personal to-do list. Convert the user's request into compact JSON only, no prose. " +
+        "Schema: {\"action\":\"add\"|\"update\"|\"delete\",\"id\":\"string\",\"date\":\"YYYY-MM-DD\",\"time\":\"HH:MM\",\"title\":\"string\",\"memo\":\"string\"}. " +
+        "Use action \"update\" or \"delete\" only when the request clearly refers to one of the existing to-do items listed below, and set \"id\" to that item's id exactly as given. " +
+        "Use action \"add\" for a brand-new to-do and leave \"id\" empty. " +
+        "For \"update\", only include the fields that should change; leave the rest empty. " +
+        `Today's date is ${today}. If the time is unknown, use an empty string. ` +
+        `Existing to-do items: ${JSON.stringify(existingItems)}`
     },
-    body: JSON.stringify({
-      model: settings.ai.model,
-      temperature: 0.2,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You manage a Korean-language personal to-do list. Convert the user's request into compact JSON only, no prose. " +
-            "Schema: {\"action\":\"add\"|\"update\"|\"delete\",\"id\":\"string\",\"date\":\"YYYY-MM-DD\",\"time\":\"HH:MM\",\"title\":\"string\",\"memo\":\"string\"}. " +
-            "Use action \"update\" or \"delete\" only when the request clearly refers to one of the existing to-do items listed below, and set \"id\" to that item's id exactly as given. " +
-            "Use action \"add\" for a brand-new to-do and leave \"id\" empty. " +
-            "For \"update\", only include the fields that should change; leave the rest empty. " +
-            `Today's date is ${today}. If the time is unknown, use an empty string. ` +
-            `Existing to-do items: ${JSON.stringify(existingItems)}`
-        },
-        { role: "user", content: text }
-      ]
-    })
-  });
+    { role: "user", content: text }
+  ]);
 
-  if (!response.ok) {
-    throw new Error(`AI request failed: ${response.status}`);
-  }
-
-  const data = await response.json();
-  const raw = data.choices?.[0]?.message?.content || "";
   const jsonText = raw.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/```$/i, "").trim();
   const parsed = JSON.parse(jsonText);
   const action = ["add", "update", "delete"].includes(parsed.action) ? parsed.action : "add";
@@ -856,15 +888,15 @@ ipcMain.handle("ai-schedule-add", async (event, text) => {
 
 ipcMain.handle("ai-capture-help", async () => {
   const settings = readSettings();
-  const visionAi = resolveVisionAi(settings);
+  const configs = visionAiConfigs(settings);
 
-  if (!settings.ai.enabled || !visionAi.apiKey) {
+  if (!settings.ai.enabled || !configs.length) {
     throw new Error("AI가 설정되어 있지 않습니다. 설정 > AI 탭에서 켜주세요.");
   }
 
   const imageDataUrl = await captureScreenDataUrl();
 
-  const reply = await requestAiCompletion(visionAi, [
+  const reply = await requestAiCompletionWithFallback(configs, [
     {
       role: "system",
       content:
@@ -889,8 +921,9 @@ ipcMain.on("ai-chat-open-request", () => {
 
 ipcMain.handle("ai-chat-send", async (event, payload) => {
   const settings = readSettings();
+  const configs = textAiConfigs(settings);
 
-  if (!settings.ai.enabled || !settings.ai.apiKey) {
+  if (!settings.ai.enabled || !configs.length) {
     throw new Error("AI가 설정되어 있지 않습니다. 설정 > AI 탭에서 켜주세요.");
   }
 
@@ -909,6 +942,6 @@ ipcMain.handle("ai-chat-send", async (event, payload) => {
     { role: "user", content: message }
   ];
 
-  const reply = await requestAiCompletion(settings.ai, messages);
+  const reply = await requestAiCompletionWithFallback(configs, messages);
   return { reply };
 });
