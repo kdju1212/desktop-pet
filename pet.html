@@ -140,6 +140,12 @@
 
       .settings-header {
         justify-content: space-between;
+        cursor: grab;
+        touch-action: none;
+      }
+
+      .settings-header.dragging {
+        cursor: grabbing;
       }
 
       .settings-title {
@@ -354,7 +360,7 @@
 
     <section id="settingsPanel" class="settings-panel" aria-hidden="true">
       <div id="appVersion" class="app-version"></div>
-      <div class="settings-header">
+      <div id="settingsHeader" class="settings-header">
         <div class="settings-title">펫 설정</div>
         <button id="closeSettings" class="close-button" type="button">X</button>
       </div>
@@ -465,6 +471,7 @@
       const actionChat = document.getElementById("actionChat");
       const settingsPanel = document.getElementById("settingsPanel");
       const appVersion = document.getElementById("appVersion");
+      const settingsHeader = document.getElementById("settingsHeader");
       const closeSettings = document.getElementById("closeSettings");
       const previewSettings = document.getElementById("previewSettings");
       const saveSettings = document.getElementById("saveSettings");
@@ -996,6 +1003,34 @@
       actionChat.addEventListener("click", () => {
         closeActionMenu();
         window.desktopPet.openAiChat();
+      });
+
+      let settingsPointerDown = false;
+      let settingsStartX = 0;
+      let settingsStartY = 0;
+
+      settingsHeader.addEventListener("pointerdown", (event) => {
+        if (event.button !== 0 || event.target.closest("button")) return;
+
+        settingsPointerDown = true;
+        settingsStartX = event.screenX;
+        settingsStartY = event.screenY;
+        settingsHeader.classList.add("dragging");
+        settingsHeader.setPointerCapture(event.pointerId);
+        window.desktopPet.startDrag({ x: event.screenX, y: event.screenY });
+      });
+
+      settingsHeader.addEventListener("pointermove", (event) => {
+        if (!settingsPointerDown) return;
+        window.desktopPet.moveDrag({ x: event.screenX, y: event.screenY });
+      });
+
+      settingsHeader.addEventListener("pointerup", (event) => {
+        if (event.button !== 0) return;
+
+        settingsPointerDown = false;
+        settingsHeader.classList.remove("dragging");
+        window.desktopPet.endDrag();
       });
 
       pet.addEventListener("mousedown", (event) => {
