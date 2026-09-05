@@ -370,6 +370,16 @@ function visionAiConfigs(settings) {
     .map((config) => ({ endpoint: config.endpoint, apiKey: config.apiKey, model: config.visionModel }));
 }
 
+function stripReasoning(text) {
+  if (typeof text !== "string") {
+    return text;
+  }
+  // Some "thinking" models (e.g. Qwen3.6 in thinking mode) inline their
+  // chain-of-thought in the message content wrapped in <think> tags
+  // instead of returning it separately. Strip it so it never reaches the UI.
+  return text.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+}
+
 async function requestAiCompletion(aiConfig, messages) {
   const response = await fetch(aiConfig.endpoint, {
     method: "POST",
@@ -389,7 +399,7 @@ async function requestAiCompletion(aiConfig, messages) {
   }
 
   const data = await response.json();
-  return data.choices?.[0]?.message?.content || "";
+  return stripReasoning(data.choices?.[0]?.message?.content || "");
 }
 
 async function requestAiCompletionWithFallback(configs, messages) {
