@@ -100,6 +100,12 @@ https://api.groq.com/openai/v1/chat/completions|openai/gpt-oss-20b|gsk_...
 https://integrate.api.nvidia.com/v1/chat/completions|meta/llama-3.1-8b-instruct|nvapi-...
 ```
 
+### 쉬운 설정 (API/엔드포인트를 몰라도 되는 방식)
+
+개발을 모르는 사용자를 위해, `AI` 탭 위쪽에 "AI 서비스 키 입력" 목록이 있습니다. 여기서는 엔드포인트나 모델 이름을 몰라도 되고, 각 서비스별로 **API 키만** 붙여넣으면 됩니다 (여러 개 넣으면 하나가 안 될 때 자동으로 다음 걸로 넘어갑니다). "직접 입력(고급)"에 있던 기존 방식은 그대로 남아있고, 두 방식을 같이 써도 됩니다(직접 입력한 것 먼저 시도한 뒤 목록에 있는 서비스들을 시도).
+
+이 목록(어떤 서비스가 있는지, 각 서비스의 엔드포인트/모델 이름)은 앱에 하드코딩된 게 아니라 `backend/` Cloudflare Worker의 `/ai-providers`(공개, 인증 불필요)에서 매번 가져옵니다. **API 키 자체는 절대 이 서버로 전송되지 않고 로컬에만 저장**됩니다 — 이 엔드포인트는 "어떤 서비스가 있는지" 목록만 내려줄 뿐입니다. Groq/NVIDIA/Gemini 같은 서비스의 모델 라인업이 바뀌면, `backend/src/index.js`의 `AI_PROVIDERS` 배열을 고치고 `npx wrangler deploy`로 다시 배포하면 이미 설치된 모든 사용자에게 한 번에 반영됩니다(앱을 다시 배포/업데이트할 필요 없음).
+
 ## 배포 메모
 
 `.exe`로 빌드해서 배포하면 사용자 PC에는 Python이나 Node.js가 필요 없습니다.
@@ -132,7 +138,7 @@ https://integrate.api.nvidia.com/v1/chat/completions|meta/llama-3.1-8b-instruct|
 
 `backend/`(Cloudflare Workers + D1 API 서버)와 `pwa/`(모바일 웹앱) 폴더가 별도로 있습니다. 구조:
 
-- `backend/` — 할일 CRUD + 데일리 할일 API. `npm run dev`로 로컬 테스트, `npm run deploy`로 실제 배포 (Cloudflare 계정 로그인 필요: `npx wrangler login`).
+- `backend/` — 할일 CRUD + 데일리 할일 API + `/ai-providers`(AI 서비스 제공자 목록, 공개·인증 불필요). `npm run dev`로 로컬 테스트, `npm run deploy`로 실제 배포 (Cloudflare 계정 로그인 필요: `npx wrangler login`).
 - `pwa/` — 폰에서 "홈 화면에 추가"로 설치하는 웹앱. `npx wrangler deploy`로 배포.
 
 데스크톱 펫에서 동기화를 켜려면 설정 창의 `동기화` 탭에서:
