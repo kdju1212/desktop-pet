@@ -1,6 +1,6 @@
 const path = require("path");
 const fs = require("fs");
-const { app, BrowserWindow, Menu, ipcMain, desktopCapturer, screen, safeStorage } = require("electron");
+const { app, BrowserWindow, Menu, ipcMain, desktopCapturer, screen, safeStorage, shell } = require("electron");
 const { autoUpdater } = require("electron-updater");
 
 const dragOffsets = new Map();
@@ -660,6 +660,13 @@ function createWindow() {
     menu.popup({ window: win });
   });
 }
+
+app.on("web-contents-created", (_event, contents) => {
+  contents.setWindowOpenHandler(({ url }) => {
+    shell.openExternal(url);
+    return { action: "deny" };
+  });
+});
 
 app.whenReady().then(() => {
   createWindow();

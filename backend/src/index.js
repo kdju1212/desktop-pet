@@ -4,6 +4,36 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Headers": "Content-Type, Authorization"
 };
 
+// Public catalog of AI providers the desktop app can offer in its settings UI.
+// Contains no secrets — just endpoints/model names, so no auth is required to read it.
+// Update this list (and redeploy) as providers change their free-tier model lineups.
+const AI_PROVIDERS = [
+  {
+    id: "groq",
+    label: "Groq (무료 티어)",
+    signupUrl: "https://console.groq.com/keys",
+    endpoint: "https://api.groq.com/openai/v1/chat/completions",
+    models: ["openai/gpt-oss-20b", "openai/gpt-oss-120b", "qwen/qwen3.6-27b"],
+    visionModels: []
+  },
+  {
+    id: "gemini",
+    label: "Google Gemini (무료 티어)",
+    signupUrl: "https://aistudio.google.com/apikey",
+    endpoint: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+    models: ["gemini-2.0-flash", "gemini-1.5-flash"],
+    visionModels: ["gemini-2.0-flash", "gemini-1.5-flash"]
+  },
+  {
+    id: "nvidia",
+    label: "NVIDIA API 카탈로그",
+    signupUrl: "https://build.nvidia.com",
+    endpoint: "https://integrate.api.nvidia.com/v1/chat/completions",
+    models: ["meta/llama-3.1-8b-instruct"],
+    visionModels: []
+  }
+];
+
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
     status,
@@ -68,6 +98,10 @@ export default {
 
     if (method === "OPTIONS") {
       return new Response(null, { headers: CORS_HEADERS });
+    }
+
+    if (path === "/ai-providers" && method === "GET") {
+      return json(AI_PROVIDERS);
     }
 
     if (!checkAuth(request, env)) {
