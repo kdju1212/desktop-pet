@@ -78,5 +78,8 @@ contextBridge.exposeInMainWorld("desktopPet", {
   },
   onUpdateReady(callback) {
     ipcRenderer.on("desktop-pet-update-ready", callback);
+  },
+  onChatMessage(callback) {
+    ipcRenderer.on("chat-message-append", (_event, payload) => callback(payload));
   }
 });
