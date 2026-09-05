@@ -27,7 +27,13 @@ const defaultSettings = {
     enabled: false,
     apiKey: "",
     endpoint: "https://api.openai.com/v1/chat/completions",
-    model: "gpt-4o-mini"
+    model: "gpt-4o-mini",
+    vision: {
+      enabled: false,
+      apiKey: "",
+      endpoint: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+      model: "gemini-2.0-flash"
+    }
   },
   sync: {
     enabled: false,
@@ -76,7 +82,11 @@ function decryptSecret(value) {
 function writeSettings(settings) {
   writeJson(settingsPath, {
     ...settings,
-    ai: { ...settings.ai, apiKey: encryptSecret(settings.ai.apiKey) },
+    ai: {
+      ...settings.ai,
+      apiKey: encryptSecret(settings.ai.apiKey),
+      vision: { ...settings.ai.vision, apiKey: encryptSecret(settings.ai.vision.apiKey) }
+    },
     sync: { ...settings.sync, apiToken: encryptSecret(settings.sync.apiToken) }
   });
 }
@@ -96,13 +106,18 @@ function readSettings() {
     ...defaultSettings,
     ...settings,
     pet: { ...defaultSettings.pet, ...(settings.pet || {}) },
-    ai: { ...defaultSettings.ai, ...(settings.ai || {}) },
+    ai: {
+      ...defaultSettings.ai,
+      ...(settings.ai || {}),
+      vision: { ...defaultSettings.ai.vision, ...((settings.ai && settings.ai.vision) || {}) }
+    },
     sync: { ...defaultSettings.sync, ...(settings.sync || {}) },
     alarms: Array.isArray(settings.alarms) ? settings.alarms : [],
     dailyTodos: Array.isArray(settings.dailyTodos) ? settings.dailyTodos : []
   };
 
   merged.ai.apiKey = decryptSecret(merged.ai.apiKey);
+  merged.ai.vision.apiKey = decryptSecret(merged.ai.vision.apiKey);
   merged.sync.apiToken = decryptSecret(merged.sync.apiToken);
 
   return merged;
@@ -327,15 +342,22 @@ async function ensureDailyTodosForToday() {
   }
 }
 
-async function requestAiCompletion(settings, messages) {
-  const response = await fetch(settings.ai.endpoint, {
+function resolveVisionAi(settings) {
+  if (settings.ai.vision.enabled && settings.ai.vision.apiKey) {
+    return settings.ai.vision;
+  }
+  return settings.ai;
+}
+
+async function requestAiCompletion(aiConfig, messages) {
+  const response = await fetch(aiConfig.endpoint, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${settings.ai.apiKey}`
+      Authorization: `Bearer ${aiConfig.apiKey}`
     },
     body: JSON.stringify({
-      model: settings.ai.model,
+      model: aiConfig.model,
       temperature: 0.4,
       messages
     })
@@ -834,14 +856,15 @@ ipcMain.handle("ai-schedule-add", async (event, text) => {
 
 ipcMain.handle("ai-capture-help", async () => {
   const settings = readSettings();
+  const visionAi = resolveVisionAi(settings);
 
-  if (!settings.ai.enabled || !settings.ai.apiKey) {
+  if (!settings.ai.enabled || !visionAi.apiKey) {
     throw new Error("AI가 설정되어 있지 않습니다. 설정 > AI 탭에서 켜주세요.");
   }
 
   const imageDataUrl = await captureScreenDataUrl();
 
-  const reply = await requestAiCompletion(settings, [
+  const reply = await requestAiCompletion(visionAi, [
     {
       role: "system",
       content:
@@ -886,6 +909,6 @@ ipcMain.handle("ai-chat-send", async (event, payload) => {
     { role: "user", content: message }
   ];
 
-  const reply = await requestAiCompletion(settings, messages);
+  const reply = await requestAiCompletion(settings.ai, messages);
   return { reply };
 });
