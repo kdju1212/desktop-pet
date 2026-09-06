@@ -544,11 +544,11 @@
 
       actionCapture.addEventListener("click", async () => {
         closeActionMenu();
-        showBubbleMessage("화면을 분석하고 있어요...", 30000);
+        showBubbleMessage("화면을 캡처하고 있어요...", 5000);
 
         try {
-          const { reply } = await window.desktopPet.captureScreenHelp();
-          showBubbleMessage(escapeHtml(reply || "분석 결과가 없어요."), settings.alarmDurationMs);
+          await window.desktopPet.captureScreenHelp();
+          showBubbleMessage("AI와 대화 창에 캡처를 올렸어요. 궁금한 점을 물어보세요!", settings.alarmDurationMs);
         } catch (error) {
           showBubbleMessage(`캡처 도움 실패: ${escapeHtml(error.message || "AI 설정을 확인해 주세요.")}`, settings.alarmDurationMs);
         }
