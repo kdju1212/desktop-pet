@@ -77,6 +77,13 @@
         color: #b42318;
       }
 
+      .msg.notice {
+        align-self: center;
+        background: #eef2ff;
+        color: #3730a3;
+        font-size: 12px;
+      }
+
       .send-row {
         display: flex;
         gap: 6px;
@@ -131,6 +138,7 @@
       const sendButton = document.getElementById("sendButton");
 
       let history = [];
+      let hasPendingCapture = false;
 
       function escapeHtml(text) {
         return String(text)
@@ -167,12 +175,13 @@
         sendButton.disabled = true;
 
         appendMessage("user", text);
-        const pending = appendMessage("assistant", "생각하는 중...");
+        const pending = appendMessage("assistant", hasPendingCapture ? "화면을 분석하는 중..." : "생각하는 중...");
 
         try {
           const { reply } = await window.desktopPet.sendChatMessage(text, history);
           pending.textContent = reply || "(빈 응답)";
           history = [...history, { role: "user", content: text }, { role: "assistant", content: reply || "" }].slice(-20);
+          hasPendingCapture = false;
         } catch (error) {
           pending.remove();
           appendMessage("error", `오류: ${error.message || "AI 설정을 확인해 주세요."}`);
@@ -190,10 +199,14 @@
         }
       });
 
-      window.desktopPet.onChatMessage(({ role, text }) => {
+      window.desktopPet.onChatMessage((payload) => {
+        const { role, text } = payload;
         appendMessage(role, text);
         if (role === "user" || role === "assistant") {
           history = [...history, { role, content: text || "" }].slice(-20);
+        }
+        if (payload.capturePending) {
+          hasPendingCapture = true;
         }
       });
 

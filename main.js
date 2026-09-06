@@ -13,6 +13,7 @@ let dailyWin = null;
 let aiChatWin = null;
 let settingsWin = null;
 let updateReady = false;
+let pendingCaptureImage = null;
 
 const defaultSettings = {
   bubbleDurationMs: 1200,
@@ -565,9 +566,9 @@ function openAiChat() {
   });
 }
 
-function pushChatMessage(role, text) {
+function pushChatMessage(entry) {
   if (aiChatWin && !aiChatWin.isDestroyed()) {
-    aiChatWin.webContents.send("chat-message-append", { role, text });
+    aiChatWin.webContents.send("chat-message-append", entry);
   }
 }
 
@@ -577,12 +578,12 @@ function openAiChatAndAppend(entries) {
 
   if (wasOpen) {
     for (const entry of entries) {
-      pushChatMessage(entry.role, entry.text);
+      pushChatMessage(entry);
     }
   } else {
     aiChatWin.webContents.once("did-finish-load", () => {
       for (const entry of entries) {
-        pushChatMessage(entry.role, entry.text);
+        pushChatMessage(entry);
       }
     });
   }
@@ -929,30 +930,13 @@ ipcMain.handle("ai-capture-help", async () => {
     );
   }
 
-  const imageDataUrl = await captureScreenDataUrl();
-
-  const reply = await requestAiCompletionWithFallback(configs, [
-    {
-      role: "system",
-      content:
-        "You are a helpful desktop assistant looking at a screenshot of the user's screen. " +
-        "Briefly describe what's on screen and offer concrete, actionable help. Respond in Korean, under 6 short lines."
-    },
-    {
-      role: "user",
-      content: [
-        { type: "text", text: "이 화면을 보고 무엇을 하면 좋을지 도와줘." },
-        { type: "image_url", image_url: { url: imageDataUrl } }
-      ]
-    }
-  ]);
+  pendingCaptureImage = await captureScreenDataUrl();
 
   openAiChatAndAppend([
-    { role: "user", text: "[화면 캡처 AI 도움] 지금 화면을 캡처해서 분석해줘." },
-    { role: "assistant", text: reply }
+    { role: "notice", text: "📷 화면을 캡처했어요! 궁금한 점을 아래에 입력해서 보내주세요.", capturePending: true }
   ]);
 
-  return { reply };
+  return { captured: true };
 });
 
 ipcMain.on("ai-chat-open-request", () => {
@@ -961,10 +945,15 @@ ipcMain.on("ai-chat-open-request", () => {
 
 ipcMain.handle("ai-chat-send", async (event, payload) => {
   const settings = readSettings();
-  const configs = textAiConfigs(settings);
+  const hasImage = Boolean(pendingCaptureImage);
+  const configs = hasImage ? visionAiConfigs(settings) : textAiConfigs(settings);
 
   if (!settings.ai.enabled || !configs.length) {
-    throw new Error("AI가 설정되어 있지 않습니다. 설정 > AI 탭에서 켜주세요.");
+    throw new Error(
+      hasImage
+        ? "화면 인식(Vision) 모델이 설정된 API 키가 없습니다. 설정 > AI 탭을 확인해주세요."
+        : "AI가 설정되어 있지 않습니다. 설정 > AI 탭에서 켜주세요."
+    );
   }
 
   const history = Array.isArray(payload?.history) ? payload.history : [];
@@ -979,9 +968,22 @@ ipcMain.handle("ai-chat-send", async (event, payload) => {
       role: entry.role === "assistant" ? "assistant" : "user",
       content: entry.content
     })),
-    { role: "user", content: message }
+    {
+      role: "user",
+      content: hasImage
+        ? [
+            { type: "text", text: message },
+            { type: "image_url", image_url: { url: pendingCaptureImage } }
+          ]
+        : message
+    }
   ];
 
   const reply = await requestAiCompletionWithFallback(configs, messages);
+
+  if (hasImage) {
+    pendingCaptureImage = null;
+  }
+
   return { reply };
 });
