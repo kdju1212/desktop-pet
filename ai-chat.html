@@ -84,6 +84,15 @@
         font-size: 12px;
       }
 
+      .msg img {
+        display: block;
+        max-width: 100%;
+        max-height: 220px;
+        object-fit: contain;
+        border-radius: 8px;
+        margin-top: 6px;
+      }
+
       .send-row {
         display: flex;
         gap: 6px;
@@ -139,6 +148,7 @@
 
       let history = [];
       let hasPendingCapture = false;
+      let pendingCaptureImageUrl = null;
 
       function escapeHtml(text) {
         return String(text)
@@ -154,11 +164,16 @@
         }
       }
 
-      function appendMessage(role, text) {
+      function appendMessage(role, text, imageDataUrl) {
         clearEmptyHint();
         const bubble = document.createElement("div");
         bubble.className = `msg ${role}`;
-        bubble.innerHTML = escapeHtml(text);
+        bubble.innerHTML = escapeHtml(text || "");
+        if (imageDataUrl) {
+          const img = document.createElement("img");
+          img.src = imageDataUrl;
+          bubble.appendChild(img);
+        }
         messages.appendChild(bubble);
         messages.scrollTop = messages.scrollHeight;
         return bubble;
@@ -174,7 +189,7 @@
         messageInput.disabled = true;
         sendButton.disabled = true;
 
-        appendMessage("user", text);
+        appendMessage("user", text, hasPendingCapture ? pendingCaptureImageUrl : null);
         const pending = appendMessage("assistant", hasPendingCapture ? "화면을 분석하는 중..." : "생각하는 중...");
 
         try {
@@ -182,6 +197,7 @@
           pending.textContent = reply || "(빈 응답)";
           history = [...history, { role: "user", content: text }, { role: "assistant", content: reply || "" }].slice(-20);
           hasPendingCapture = false;
+          pendingCaptureImageUrl = null;
         } catch (error) {
           pending.remove();
           appendMessage("error", `오류: ${error.message || "AI 설정을 확인해 주세요."}`);
@@ -200,13 +216,14 @@
       });
 
       window.desktopPet.onChatMessage((payload) => {
-        const { role, text } = payload;
-        appendMessage(role, text);
+        const { role, text, imageDataUrl } = payload;
+        appendMessage(role, text, imageDataUrl);
         if (role === "user" || role === "assistant") {
           history = [...history, { role, content: text || "" }].slice(-20);
         }
         if (payload.capturePending) {
           hasPendingCapture = true;
+          pendingCaptureImageUrl = imageDataUrl || null;
         }
       });
 
