@@ -933,7 +933,12 @@ ipcMain.handle("ai-capture-help", async () => {
   pendingCaptureImage = await captureScreenDataUrl();
 
   openAiChatAndAppend([
-    { role: "notice", text: "📷 화면을 캡처했어요! 궁금한 점을 아래에 입력해서 보내주세요.", capturePending: true }
+    {
+      role: "notice",
+      text: "📷 화면을 캡처했어요! 궁금한 점을 아래에 입력해서 보내주세요.",
+      capturePending: true,
+      imageDataUrl: pendingCaptureImage
+    }
   ]);
 
   return { captured: true };
